@@ -1,0 +1,154 @@
+export interface TelegramExport {
+  name: string
+  type: string
+  id: number
+  messages: TelegramMessage[]
+}
+
+export interface TextEntity {
+  type: string
+  text: string
+  document_id?: string
+  collapsed?: boolean
+  href?: string
+}
+
+export type MessageText = string | TextEntity
+
+export interface Reaction {
+  type: string
+  count: number
+  emoji: string
+}
+
+export interface TelegramMessage {
+  id: number
+  type: "message" | "service"
+  date: string
+  date_unixtime: string
+  edited?: string
+  edited_unixtime?: string
+  from?: string
+  from_id?: string
+  actor?: string
+  actor_id?: string
+  action?: string
+  title?: string
+  text: string | MessageText[]
+  text_entities: TextEntity[]
+  reply_to_message_id?: number
+  forwarded_from?: string
+  forwarded_from_id?: string
+  photo?: string
+  photo_file_size?: number
+  width?: number
+  height?: number
+  file?: string
+  media_type?: string
+  mime_type?: string
+  duration_seconds?: number
+  reactions?: Reaction[]
+  sticker_emoji?: string
+  thumbnail?: string
+}
+
+export interface ChannelStats {
+  name: string
+  type: string
+  totalMessages: number
+  totalServiceMessages: number
+  dateRange: { start: string; end: string }
+  topReactions: { emoji: string; count: number }[]
+  totalReactions: number
+  messagesWithLinks: number
+  messagesWithMedia: number
+  forwardedMessages: number
+  repliedMessages: number
+}
+
+export interface MonthGroup {
+  key: string
+  label: string
+  messages: TelegramMessage[]
+}
+
+export function getMessageText(msg: TelegramMessage): string {
+  if (typeof msg.text === "string") return msg.text
+  if (Array.isArray(msg.text)) {
+    return msg.text
+      .map((part) => (typeof part === "string" ? part : part.text))
+      .join("")
+  }
+  return ""
+}
+
+export function computeStats(data: TelegramExport): ChannelStats {
+  const messages = data.messages.filter((m) => m.type === "message")
+  const serviceMessages = data.messages.filter((m) => m.type === "service")
+
+  const reactionMap = new Map<string, number>()
+  let totalReactions = 0
+  for (const msg of messages) {
+    if (msg.reactions) {
+      for (const r of msg.reactions) {
+        reactionMap.set(r.emoji, (reactionMap.get(r.emoji) || 0) + r.count)
+        totalReactions += r.count
+      }
+    }
+  }
+
+  const topReactions = Array.from(reactionMap.entries())
+    .map(([emoji, count]) => ({ emoji, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 6)
+
+  const dates = data.messages.map((m) => m.date).sort()
+
+  return {
+    name: data.name,
+    type: data.type,
+    totalMessages: messages.length,
+    totalServiceMessages: serviceMessages.length,
+    dateRange: {
+      start: dates[0] || "",
+      end: dates[dates.length - 1] || "",
+    },
+    topReactions,
+    totalReactions,
+    messagesWithLinks: messages.filter((m) => {
+      const text = getMessageText(m)
+      return text.includes("http://") || text.includes("https://")
+    }).length,
+    messagesWithMedia: messages.filter(
+      (m) => m.photo || m.file || m.media_type
+    ).length,
+    forwardedMessages: messages.filter((m) => m.forwarded_from).length,
+    repliedMessages: messages.filter((m) => m.reply_to_message_id).length,
+  }
+}
+
+export function groupByMonth(messages: TelegramMessage[]): MonthGroup[] {
+  const groups = new Map<string, TelegramMessage[]>()
+
+  for (const msg of messages) {
+    const date = new Date(msg.date)
+    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
+    if (!groups.has(key)) groups.set(key, [])
+    groups.get(key)!.push(msg)
+  }
+
+  return Array.from(groups.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, msgs]) => {
+      const [year, month] = key.split("-")
+      const date = new Date(parseInt(year), parseInt(month) - 1)
+      return {
+        key,
+        label: date.toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "long",
+        }),
+        messages: msgs,
+      }
+    })
+}

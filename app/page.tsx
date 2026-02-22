@@ -1,0 +1,16 @@
+"use client"
+
+import { useState } from "react"
+import { UploadScreen } from "@/components/upload-screen"
+import { ChannelViewer } from "@/components/channel-viewer"
+import type { TelegramExport } from "@/lib/telegram-types"
+
+export default function Home() {
+  const [data, setData] = useState<TelegramExport | null>(null)
+
+  if (!data) {
+    return <UploadScreen onDataLoaded={setData} />
+  }
+
+  return <ChannelViewer data={data} onReset={() => setData(null)} />
+}
