@@ -70,20 +70,96 @@ export function UploadScreen({ onDataLoaded, onMediaFolderLoaded, folderName }: 
           </p>
         </div>
 
+        {/* Primary: Select export folder */}
+        <div className="flex flex-col items-center gap-3 w-full">
+          <input
+            ref={folderInputRef}
+            type="file"
+            // @ts-expect-error webkitdirectory is a non-standard attribute
+            webkitdirectory=""
+            directory=""
+            multiple
+            className="hidden"
+            onChange={async (e) => {
+              const files = e.target.files
+              if (!files || files.length === 0) return
+
+              const map = buildMediaFileMap(files)
+              const firstPath = (files[0] as File & { webkitRelativePath?: string }).webkitRelativePath || ""
+              const rootName = firstPath.split("/")[0] || "folder"
+              onMediaFolderLoaded(map, rootName)
+
+              // Look for a JSON file at the root level of the export folder
+              for (let i = 0; i < files.length; i++) {
+                const file = files[i]
+                const relPath = (file as File & { webkitRelativePath?: string }).webkitRelativePath || ""
+                const parts = relPath.split("/")
+                // Root-level JSON file: "FolderName/result.json" (depth = 2)
+                if (parts.length === 2 && file.name.endsWith(".json")) {
+                  try {
+                    const text = await file.text()
+                    const json = JSON.parse(text)
+                    if (json.messages && Array.isArray(json.messages)) {
+                      onDataLoaded(json as TelegramExport)
+                      return
+                    }
+                  } catch {
+                    // Not a valid Telegram export JSON, ignore
+                  }
+                }
+              }
+            }}
+          />
+          <button
+            onClick={() => folderInputRef.current?.click()}
+            className="group relative flex w-full cursor-pointer flex-col items-center gap-4 rounded-xl border border-dashed border-border bg-card/50 px-8 py-12 transition-all hover:border-primary/50 hover:bg-card"
+          >
+            {folderName ? (
+              <>
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
+                  <Check className="h-5 w-5 text-primary" />
+                </div>
+                <div className="flex flex-col items-center gap-1">
+                  <span className="text-sm font-medium text-foreground">{folderName}</span>
+                  <span className="text-xs text-muted-foreground">folder selected, loading...</span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-secondary transition-colors group-hover:bg-primary/10">
+                  <FolderOpen className="h-5 w-5 text-muted-foreground transition-colors group-hover:text-primary" />
+                </div>
+                <div className="flex flex-col items-center gap-1">
+                  <span className="text-sm font-medium text-foreground">
+                    Select your export folder
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    Auto-detects result.json and media files
+                  </span>
+                </div>
+              </>
+            )}
+          </button>
+        </div>
+
+        <div className="flex items-center gap-3 w-full max-w-xs">
+          <div className="h-px flex-1 bg-border/50" />
+          <span className="text-xs text-muted-foreground/50">or drop a JSON file</span>
+          <div className="h-px flex-1 bg-border/50" />
+        </div>
+
+        {/* Secondary: Drop JSON only */}
         <label
           onDrop={handleDrop}
           onDragOver={(e) => e.preventDefault()}
-          className="group relative flex w-full cursor-pointer flex-col items-center gap-4 rounded-xl border border-dashed border-border bg-card/50 px-8 py-16 transition-all hover:border-primary/50 hover:bg-card"
+          className="group relative flex w-full cursor-pointer flex-col items-center gap-3 rounded-xl border border-dashed border-border/60 bg-card/30 px-8 py-8 transition-all hover:border-primary/30 hover:bg-card/50"
         >
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-secondary transition-colors group-hover:bg-primary/10">
-            <Upload className="h-5 w-5 text-muted-foreground transition-colors group-hover:text-primary" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary/60 transition-colors group-hover:bg-primary/10">
+            <Upload className="h-4 w-4 text-muted-foreground transition-colors group-hover:text-primary" />
           </div>
-          <div className="flex flex-col items-center gap-1">
-            <span className="text-sm font-medium text-foreground">
-              Drop your JSON file here
-            </span>
-            <span className="text-xs text-muted-foreground">
-              or click to browse
+          <div className="flex flex-col items-center gap-0.5">
+            <span className="text-xs font-medium text-muted-foreground">
+              JSON file only (no media)
             </span>
           </div>
           <input
@@ -94,47 +170,6 @@ export function UploadScreen({ onDataLoaded, onMediaFolderLoaded, folderName }: 
             aria-label="Upload Telegram export JSON file"
           />
         </label>
-
-        <div className="flex flex-col items-center gap-3 w-full">
-          <div className="h-px w-full max-w-[200px] bg-border/50" />
-          <p className="text-xs text-muted-foreground/60">Optional: set export folder to view media</p>
-          <input
-            ref={folderInputRef}
-            type="file"
-            // @ts-expect-error webkitdirectory is a non-standard attribute
-            webkitdirectory=""
-            directory=""
-            multiple
-            className="hidden"
-            onChange={(e) => {
-              const files = e.target.files
-              if (files && files.length > 0) {
-                const map = buildMediaFileMap(files)
-                // Extract folder name from first file's path
-                const firstPath = (files[0] as File & { webkitRelativePath?: string }).webkitRelativePath || ""
-                const rootName = firstPath.split("/")[0] || "folder"
-                onMediaFolderLoaded(map, rootName)
-              }
-            }}
-          />
-          <button
-            onClick={() => folderInputRef.current?.click()}
-            className="flex items-center gap-2 rounded-lg border border-dashed border-border bg-card/30 px-4 py-2.5 text-sm text-muted-foreground transition-all hover:border-primary/40 hover:text-foreground cursor-pointer"
-          >
-            {folderName ? (
-              <>
-                <Check className="h-4 w-4 text-primary" />
-                <span className="font-medium text-foreground">{folderName}</span>
-                <span className="text-xs text-muted-foreground/60">selected</span>
-              </>
-            ) : (
-              <>
-                <FolderOpen className="h-4 w-4" />
-                <span>Select export folder</span>
-              </>
-            )}
-          </button>
-        </div>
 
         <p className="text-xs text-muted-foreground/60">
           Export from Telegram Desktop: Settings &rarr; Advanced &rarr; Export
