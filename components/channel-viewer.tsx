@@ -16,6 +16,7 @@ import { buildMediaFileMap, type MediaFileMap } from "@/hooks/use-media-url"
 import { useRef } from "react"
 import { CalendarView } from "./calendar-view"
 import { PostDetailView } from "./post-detail-view"
+import { StatsView } from "./stats-view"
 
 interface ChannelViewerProps {
   data: TelegramExport
@@ -33,6 +34,7 @@ export function ChannelViewer({ data, onReset, mediaFileMap, folderName, onMedia
   const [activeHashtag, setActiveHashtag] = useState<string | null>(null)
   const [calendarOpen, setCalendarOpen] = useState<{ year: number; month: number } | null>(null)
   const [selectedPost, setSelectedPost] = useState<TelegramMessage | null>(null)
+  const [statsOpen, setStatsOpen] = useState(false)
 
   const stats = useMemo(() => computeStats(data), [data])
 
@@ -144,7 +146,7 @@ export function ChannelViewer({ data, onReset, mediaFileMap, folderName, onMedia
 
   return (
     <div className="min-h-screen bg-background">
-      <ChannelHeader stats={stats} />
+      <ChannelHeader stats={stats} onStatsClick={() => setStatsOpen(true)} />
       <FilterToolbar
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
@@ -169,6 +171,14 @@ export function ChannelViewer({ data, onReset, mediaFileMap, folderName, onMedia
         onMonthClick={openCalendar}
         onPostClick={openPost}
       />
+
+      {/* Stats overlay */}
+      {statsOpen && (
+        <StatsView
+          messages={data.messages}
+          onClose={() => setStatsOpen(false)}
+        />
+      )}
 
       {/* Post detail overlay */}
       {selectedPost && (

@@ -8,14 +8,16 @@ import {
   Forward,
   Reply,
   Heart,
+  BarChart3,
 } from "lucide-react"
 import type { ChannelStats } from "@/lib/telegram-types"
 
 interface ChannelHeaderProps {
   stats: ChannelStats
+  onStatsClick?: () => void
 }
 
-export function ChannelHeader({ stats }: ChannelHeaderProps) {
+export function ChannelHeader({ stats, onStatsClick }: ChannelHeaderProps) {
   const startDate = stats.dateRange.start
     ? format(new Date(stats.dateRange.start), "MMM yyyy")
     : ""
@@ -73,6 +75,18 @@ export function ChannelHeader({ stats }: ChannelHeaderProps) {
                 {stats.type.replace("_", " ")}
               </p>
             </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {onStatsClick && (
+              <button
+                onClick={onStatsClick}
+                className="flex items-center gap-1.5 rounded-lg bg-primary/10 border border-primary/20 px-3 py-1.5 text-xs font-medium text-primary transition-all hover:bg-primary/20"
+              >
+                <BarChart3 className="h-3.5 w-3.5" />
+                Analytics
+              </button>
+            )}
           </div>
 
           {stats.topReactions.length > 0 && (
