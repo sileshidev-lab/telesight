@@ -44,6 +44,8 @@ export interface TelegramMessage {
   width?: number
   height?: number
   file?: string
+  file_name?: string
+  file_size?: number
   media_type?: string
   mime_type?: string
   duration_seconds?: number

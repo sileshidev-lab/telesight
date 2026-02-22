@@ -1,14 +1,16 @@
 "use client"
 
 import { useCallback } from "react"
-import { Upload } from "lucide-react"
+import { Upload, FolderOpen, Check } from "lucide-react"
 import type { TelegramExport } from "@/lib/telegram-types"
 
 interface UploadScreenProps {
   onDataLoaded: (data: TelegramExport) => void
+  onMediaRootSelected: (handle: FileSystemDirectoryHandle) => void
+  mediaRoot: FileSystemDirectoryHandle | null
 }
 
-export function UploadScreen({ onDataLoaded }: UploadScreenProps) {
+export function UploadScreen({ onDataLoaded, onMediaRootSelected, mediaRoot }: UploadScreenProps) {
   const handleFile = useCallback(
     (file: File) => {
       const reader = new FileReader()
@@ -90,6 +92,35 @@ export function UploadScreen({ onDataLoaded }: UploadScreenProps) {
             aria-label="Upload Telegram export JSON file"
           />
         </label>
+
+        <div className="flex flex-col items-center gap-3 w-full">
+          <div className="h-px w-full max-w-[200px] bg-border/50" />
+          <p className="text-xs text-muted-foreground/60">Optional: set export folder to view media</p>
+          <button
+            onClick={async () => {
+              try {
+                const handle = await window.showDirectoryPicker({ mode: "read" })
+                onMediaRootSelected(handle)
+              } catch {
+                // User cancelled
+              }
+            }}
+            className="flex items-center gap-2 rounded-lg border border-dashed border-border bg-card/30 px-4 py-2.5 text-sm text-muted-foreground transition-all hover:border-primary/40 hover:text-foreground"
+          >
+            {mediaRoot ? (
+              <>
+                <Check className="h-4 w-4 text-primary" />
+                <span className="font-medium text-foreground">{mediaRoot.name}</span>
+                <span className="text-xs text-muted-foreground/60">selected</span>
+              </>
+            ) : (
+              <>
+                <FolderOpen className="h-4 w-4" />
+                <span>Select export folder</span>
+              </>
+            )}
+          </button>
+        </div>
 
         <p className="text-xs text-muted-foreground/60">
           Export from Telegram Desktop: Settings &rarr; Advanced &rarr; Export

@@ -11,14 +11,16 @@ import {
   getMessageText,
   groupByMonth,
 } from "@/lib/telegram-types"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, FolderOpen, Check } from "lucide-react"
 
 interface ChannelViewerProps {
   data: TelegramExport
   onReset: () => void
+  mediaRoot: FileSystemDirectoryHandle | null
+  onMediaRootSelected: (handle: FileSystemDirectoryHandle) => void
 }
 
-export function ChannelViewer({ data, onReset }: ChannelViewerProps) {
+export function ChannelViewer({ data, onReset, mediaRoot, onMediaRootSelected }: ChannelViewerProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [activeFilter, setActiveFilter] = useState<FilterType>("all")
   const [sortDirection, setSortDirection] = useState<SortDirection>("newest")
@@ -136,10 +138,35 @@ export function ChannelViewer({ data, onReset }: ChannelViewerProps) {
         monthGroups={monthGroups}
         messageMap={messageMap}
         onHashtagClick={handleHashtagClick}
+        mediaRoot={mediaRoot}
       />
 
-      {/* Back button */}
-      <div className="fixed bottom-6 right-6 z-50">
+      {/* Floating action buttons */}
+      <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2 items-end">
+        <button
+          onClick={async () => {
+            try {
+              const handle = await window.showDirectoryPicker({ mode: "read" })
+              onMediaRootSelected(handle)
+            } catch {
+              // User cancelled
+            }
+          }}
+          className="flex items-center gap-2 rounded-full bg-card border border-border px-4 py-2 text-xs font-medium text-muted-foreground shadow-lg transition-all hover:text-foreground hover:border-primary/30"
+          aria-label="Set export folder for media"
+        >
+          {mediaRoot ? (
+            <>
+              <Check className="h-3.5 w-3.5 text-primary" />
+              <span className="max-w-[120px] truncate">{mediaRoot.name}</span>
+            </>
+          ) : (
+            <>
+              <FolderOpen className="h-3.5 w-3.5" />
+              Media folder
+            </>
+          )}
+        </button>
         <button
           onClick={onReset}
           className="flex items-center gap-2 rounded-full bg-card border border-border px-4 py-2 text-xs font-medium text-muted-foreground shadow-lg transition-all hover:text-foreground hover:border-primary/30"

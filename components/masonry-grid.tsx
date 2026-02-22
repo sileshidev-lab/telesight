@@ -10,11 +10,12 @@ interface MasonryGridProps {
   monthGroups: MonthGroup[]
   messageMap: Map<number, TelegramMessage>
   onHashtagClick?: (hashtag: string) => void
+  mediaRoot?: FileSystemDirectoryHandle | null
 }
 
 const BATCH_SIZE = 40
 
-export function MasonryGrid({ monthGroups, messageMap, onHashtagClick }: MasonryGridProps) {
+export function MasonryGrid({ monthGroups, messageMap, onHashtagClick, mediaRoot }: MasonryGridProps) {
   const isMobile = useIsMobile()
   const [visibleCount, setVisibleCount] = useState(BATCH_SIZE)
   const sentinelRef = useRef<HTMLDivElement>(null)
@@ -165,6 +166,7 @@ export function MasonryGrid({ monthGroups, messageMap, onHashtagClick }: Masonry
                     }
                     onReplyClick={handleReplyClick}
                     onHashtagClick={onHashtagClick}
+                    mediaRoot={mediaRoot}
                   />
                 </div>
               )
