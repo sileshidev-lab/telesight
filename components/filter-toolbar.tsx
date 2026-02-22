@@ -121,8 +121,8 @@ export function FilterToolbar({
                   ? "bg-primary/15 text-primary"
                   : "bg-secondary/50 text-muted-foreground/50 hover:text-muted-foreground"
               }`}
-              aria-label={displayToggles.showLinkPreviews ? "Hide link previews" : "Show link previews"}
-              title={displayToggles.showLinkPreviews ? "Links visible" : "Links hidden"}
+              aria-label={displayToggles.showLinkPreviews ? "Hide rich link previews" : "Show rich link previews"}
+              title={displayToggles.showLinkPreviews ? "Link previews on" : "Link previews off"}
             >
               <Link2 className="h-3.5 w-3.5" />
             </button>

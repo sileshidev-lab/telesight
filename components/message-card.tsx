@@ -1,9 +1,31 @@
 "use client"
 
+import { useMemo } from "react"
 import { format } from "date-fns"
 import { Forward, Reply, ExternalLink, Eye } from "lucide-react"
 import type { TelegramMessage, MessageText } from "@/lib/telegram-types"
 import { useMediaUrl, type MediaFileMap } from "@/hooks/use-media-url"
+import { LinkPreview } from "./link-preview"
+
+function extractUrls(msg: TelegramMessage): string[] {
+  const urls: string[] = []
+  if (Array.isArray(msg.text)) {
+    for (const part of msg.text) {
+      if (typeof part === "string") continue
+      if (part.type === "link" && part.text.startsWith("http")) {
+        urls.push(part.text)
+      } else if (part.type === "text_link" && part.href?.startsWith("http")) {
+        urls.push(part.href)
+      }
+    }
+  } else if (typeof msg.text === "string") {
+    const urlRegex = /https?:\/\/[^\s<>"{}|\\^`[\]]+/g
+    const matches = msg.text.match(urlRegex)
+    if (matches) urls.push(...matches)
+  }
+  // Deduplicate
+  return [...new Set(urls)]
+}
 
 interface MessageCardProps {
   message: TelegramMessage
@@ -178,6 +200,8 @@ export function MessageCard({
   const resolvedMediaUrl = photoUrl || fileUrl
   const resolvedThumbUrl = thumbnailUrl
 
+  const urls = useMemo(() => extractUrls(message), [message])
+
   return (
     <article
       onClick={() => onPostClick?.(message)}
@@ -331,6 +355,15 @@ export function MessageCard({
           ) : Array.isArray(message.text) ? (
             renderTextParts(message.text as MessageText[], onHashtagClick, showLinkPreviews)
           ) : null}
+        </div>
+      )}
+
+      {/* Link previews */}
+      {showLinkPreviews && urls.length > 0 && (
+        <div className="flex flex-col">
+          {urls.slice(0, 2).map((u) => (
+            <LinkPreview key={u} url={u} />
+          ))}
         </div>
       )}
 
