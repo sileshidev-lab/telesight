@@ -26,6 +26,8 @@ import { GitBranch } from "lucide-react"
 import { ConflictView } from "./conflict-view"
 import { SentimentView } from "./sentiment-view"
 import { FraudView } from "./fraud-view"
+import { UserProfilesView } from "./user-profiles-view"
+import { ReportsView } from "./reports-view"
 import { AIChatWidget } from "./ai-chat-widget"
 
 interface GroupViewerProps {
@@ -51,6 +53,8 @@ export function GroupViewer({ data, onReset, mediaFileMap, folderName, onMediaFo
   const [membersOpen, setMembersOpen] = useState(false)
   const [sentimentOpen, setSentimentOpen] = useState(false)
   const [fraudOpen, setFraudOpen] = useState(false)
+  const [userProfilesOpen, setUserProfilesOpen] = useState(false)
+  const [reportsOpen, setReportsOpen] = useState(false)
   const [displayToggles, setDisplayToggles] = useState<DisplayToggles>({
     showMedia: true,
     showLinkPreviews: true,
@@ -156,6 +160,8 @@ export function GroupViewer({ data, onReset, mediaFileMap, folderName, onMediaFo
         onMembersClick={() => setMembersOpen(true)}
         onSentimentClick={() => setSentimentOpen(true)}
         onFraudClick={() => setFraudOpen(true)}
+        onUserProfilesClick={() => setUserProfilesOpen(true)}
+        onReportsClick={() => setReportsOpen(true)}
       />
 
       {/* Topic/Chronological toggle bar */}
@@ -329,6 +335,22 @@ export function GroupViewer({ data, onReset, mediaFileMap, folderName, onMediaFo
             openPost(msg)
           }}
           mediaFileMap={mediaFileMap}
+        />
+      )}
+
+      {/* User Profiles overlay */}
+      {userProfilesOpen && (
+        <UserProfilesView
+          messages={data.messages}
+          onClose={() => setUserProfilesOpen(false)}
+        />
+      )}
+
+      {/* Reports overlay */}
+      {reportsOpen && (
+        <ReportsView
+          messages={data.messages}
+          onClose={() => setReportsOpen(false)}
         />
       )}
 
