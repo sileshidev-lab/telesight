@@ -30,6 +30,7 @@ import {
 } from "recharts"
 import type { TelegramMessage } from "@/lib/telegram-types"
 import { getMessageText } from "@/lib/telegram-types"
+import { ActivityHeatmap } from "./activity-heatmap"
 
 interface InsightsViewProps {
   messages: TelegramMessage[]
@@ -410,6 +411,15 @@ export function InsightsView({ messages, onClose }: InsightsViewProps) {
       </div>
 
       <div className="mx-auto max-w-5xl px-4 py-6 flex flex-col gap-8">
+        {/* Activity Heatmap */}
+        <section>
+          <h2 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider flex items-center gap-2">
+            <TrendingUp className="h-3.5 w-3.5" />
+            Posting Activity
+          </h2>
+          <ActivityHeatmap messages={messages} />
+        </section>
+
         {/* Key Insights cards */}
         <section>
           <h2 className="text-sm font-medium text-muted-foreground mb-4 uppercase tracking-wider flex items-center gap-2">
