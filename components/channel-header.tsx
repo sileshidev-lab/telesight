@@ -9,15 +9,17 @@ import {
   Reply,
   Heart,
   BarChart3,
+  Share2,
 } from "lucide-react"
 import type { ChannelStats } from "@/lib/telegram-types"
 
 interface ChannelHeaderProps {
   stats: ChannelStats
   onStatsClick?: () => void
+  onGraphClick?: () => void
 }
 
-export function ChannelHeader({ stats, onStatsClick }: ChannelHeaderProps) {
+export function ChannelHeader({ stats, onStatsClick, onGraphClick }: ChannelHeaderProps) {
   const startDate = stats.dateRange.start
     ? format(new Date(stats.dateRange.start), "MMM yyyy")
     : ""
@@ -85,6 +87,15 @@ export function ChannelHeader({ stats, onStatsClick }: ChannelHeaderProps) {
               >
                 <BarChart3 className="h-3.5 w-3.5" />
                 Analytics
+              </button>
+            )}
+            {onGraphClick && (
+              <button
+                onClick={onGraphClick}
+                className="flex items-center gap-1.5 rounded-lg bg-secondary/50 border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-all hover:text-foreground hover:border-primary/30"
+              >
+                <Share2 className="h-3.5 w-3.5" />
+                Reply Graph
               </button>
             )}
           </div>
