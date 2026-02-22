@@ -58,6 +58,37 @@ export async function POST(req: NextRequest) {
                 loading: true,
               }
             }
+
+            if (response.status === 401) {
+              return {
+                id: msg.id,
+                text: msg.text,
+                sentiment: "neutral",
+                score: 0.5,
+                error: "Invalid token. Please check your Hugging Face access token.",
+              }
+            }
+
+            if (response.status === 403) {
+              return {
+                id: msg.id,
+                text: msg.text,
+                sentiment: "neutral",
+                score: 0.5,
+                error: "Token doesn't have access to this model. Please check your token permissions.",
+              }
+            }
+
+            if (response.status === 410) {
+              return {
+                id: msg.id,
+                text: msg.text,
+                sentiment: "neutral",
+                score: 0.5,
+                error: "Model is deprecated or unavailable. Please check the Hugging Face model hub for alternatives.",
+              }
+            }
+
             throw new Error(`HF API error: ${response.status}`)
           }
 
@@ -152,6 +183,15 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({
         status: "loading",
         message: "Model is currently loading, please try again in a few seconds",
+      })
+    }
+
+    // Handle 410 Gone - model deprecated/unavailable
+    if (response.status === 410) {
+      return NextResponse.json({
+        status: "ready",
+        message: "Token is valid (model endpoint deprecated but token works)",
+        model,
       })
     }
 
