@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 
-const HF_API_URL = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2"
+const HF_API_URL = "https://router.huggingface.co/hf-inference/v1/models/mistralai/Mistral-7B-Instruct-v0.2"
 
 export async function POST(req: NextRequest) {
   try {
