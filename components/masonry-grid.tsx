@@ -9,11 +9,12 @@ import { useIsMobile } from "@/hooks/use-mobile"
 interface MasonryGridProps {
   monthGroups: MonthGroup[]
   messageMap: Map<number, TelegramMessage>
+  onHashtagClick?: (hashtag: string) => void
 }
 
 const BATCH_SIZE = 40
 
-export function MasonryGrid({ monthGroups, messageMap }: MasonryGridProps) {
+export function MasonryGrid({ monthGroups, messageMap, onHashtagClick }: MasonryGridProps) {
   const isMobile = useIsMobile()
   const [visibleCount, setVisibleCount] = useState(BATCH_SIZE)
   const sentinelRef = useRef<HTMLDivElement>(null)
@@ -163,6 +164,7 @@ export function MasonryGrid({ monthGroups, messageMap }: MasonryGridProps) {
                         : undefined
                     }
                     onReplyClick={handleReplyClick}
+                    onHashtagClick={onHashtagClick}
                   />
                 </div>
               )

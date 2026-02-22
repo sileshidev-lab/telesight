@@ -8,9 +8,13 @@ interface MessageCardProps {
   message: TelegramMessage
   replyToMessage?: TelegramMessage
   onReplyClick?: (id: number) => void
+  onHashtagClick?: (hashtag: string) => void
 }
 
-function renderTextParts(parts: MessageText[]): React.ReactNode[] {
+function renderTextParts(
+  parts: MessageText[],
+  onHashtagClick?: (hashtag: string) => void
+): React.ReactNode[] {
   return parts.map((part, i) => {
     if (typeof part === "string") {
       return <span key={i}>{part}</span>
@@ -70,9 +74,16 @@ function renderTextParts(parts: MessageText[]): React.ReactNode[] {
         )
       case "hashtag":
         return (
-          <span key={i} className="text-primary">
+          <button
+            key={i}
+            onClick={(e) => {
+              e.stopPropagation()
+              onHashtagClick?.(part.text)
+            }}
+            className="text-primary hover:underline cursor-pointer font-medium"
+          >
             {part.text}
-          </span>
+          </button>
         )
       case "blockquote":
         return (
@@ -129,6 +140,7 @@ export function MessageCard({
   message,
   replyToMessage,
   onReplyClick,
+  onHashtagClick,
 }: MessageCardProps) {
   const text = getPlainText(message)
   const hasMedia = !!(message.photo || message.media_type || message.file)
@@ -225,7 +237,7 @@ export function MessageCard({
           {typeof message.text === "string" ? (
             <span>{message.text}</span>
           ) : Array.isArray(message.text) ? (
-            renderTextParts(message.text as MessageText[])
+            renderTextParts(message.text as MessageText[], onHashtagClick)
           ) : null}
         </div>
       )}

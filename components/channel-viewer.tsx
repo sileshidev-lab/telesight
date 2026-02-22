@@ -1,9 +1,10 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useState, useCallback } from "react"
 import { ChannelHeader } from "./channel-header"
 import { FilterToolbar, type FilterType } from "./filter-toolbar"
 import { MasonryGrid } from "./masonry-grid"
+import { HashtagHeader } from "./hashtag-header"
 import type { TelegramExport, TelegramMessage, SortDirection } from "@/lib/telegram-types"
 import {
   computeStats,
@@ -21,6 +22,7 @@ export function ChannelViewer({ data, onReset }: ChannelViewerProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [activeFilter, setActiveFilter] = useState<FilterType>("all")
   const [sortDirection, setSortDirection] = useState<SortDirection>("newest")
+  const [activeHashtag, setActiveHashtag] = useState<string | null>(null)
 
   const stats = useMemo(() => computeStats(data), [data])
 
@@ -68,6 +70,15 @@ export function ChannelViewer({ data, onReset }: ChannelViewerProps) {
         break
     }
 
+    // Apply hashtag filter
+    if (activeHashtag) {
+      const tag = activeHashtag.toLowerCase()
+      msgs = msgs.filter((m) => {
+        const text = getMessageText(m).toLowerCase()
+        return text.includes(tag)
+      })
+    }
+
     // Apply search
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase()
@@ -84,12 +95,23 @@ export function ChannelViewer({ data, onReset }: ChannelViewerProps) {
     }
 
     return msgs
-  }, [data.messages, activeFilter, searchQuery])
+  }, [data.messages, activeFilter, searchQuery, activeHashtag])
 
   const monthGroups = useMemo(
     () => groupByMonth(filteredMessages, sortDirection),
     [filteredMessages, sortDirection]
   )
+
+  const handleHashtagClick = useCallback((hashtag: string) => {
+    setActiveHashtag(hashtag)
+    setActiveFilter("all")
+    setSearchQuery("")
+    window.scrollTo({ top: 0, behavior: "smooth" })
+  }, [])
+
+  const clearHashtag = useCallback(() => {
+    setActiveHashtag(null)
+  }, [])
 
   return (
     <div className="min-h-screen bg-background">
@@ -103,7 +125,18 @@ export function ChannelViewer({ data, onReset }: ChannelViewerProps) {
         sortDirection={sortDirection}
         onSortChange={setSortDirection}
       />
-      <MasonryGrid monthGroups={monthGroups} messageMap={messageMap} />
+      {activeHashtag && (
+        <HashtagHeader
+          hashtag={activeHashtag}
+          messages={filteredMessages}
+          onClear={clearHashtag}
+        />
+      )}
+      <MasonryGrid
+        monthGroups={monthGroups}
+        messageMap={messageMap}
+        onHashtagClick={handleHashtagClick}
+      />
 
       {/* Back button */}
       <div className="fixed bottom-6 right-6 z-50">
