@@ -212,6 +212,7 @@ function DMHeader({
   onStatsClick,
   onInsightsClick,
   onConflictClick,
+  onManipulationClick,
   onGraphClick,
   onGalleryClick,
   onCalendarClick,
