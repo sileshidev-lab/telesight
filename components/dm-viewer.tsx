@@ -38,6 +38,8 @@ import { CalendarView } from "./calendar-view"
 import { ThreadedView } from "./threaded-view"
 import { ConflictView } from "./conflict-view"
 import { ManipulationView } from "./manipulation-view"
+import { HFChatWidget } from "./hf-chat-widget"
+import { HFSettingsModal } from "./hf-settings-modal"
 
 interface DMViewerProps {
   data: TelegramExport
@@ -359,6 +361,7 @@ export function DMViewer({
   const [insightsOpen, setInsightsOpen] = useState(false)
   const [conflictOpen, setConflictOpen] = useState(false)
   const [manipulationOpen, setManipulationOpen] = useState(false)
+  const [hfSettingsOpen, setHfSettingsOpen] = useState(false)
   const [graphOpen, setGraphOpen] = useState(false)
   const [galleryOpen, setGalleryOpen] = useState(false)
   const [calendarOpen, setCalendarOpen] = useState<{ year: number; month: number } | null>(null)
@@ -732,6 +735,18 @@ export function DMViewer({
             onMediaFolderLoaded(map, rootName)
           }
         }}
+      />
+
+      {/* HF AI Chat */}
+      <HFChatWidget
+        messages={data.messages}
+        onOpenSettings={() => setHfSettingsOpen(true)}
+      />
+
+      {/* HF Settings Modal */}
+      <HFSettingsModal
+        isOpen={hfSettingsOpen}
+        onClose={() => setHfSettingsOpen(false)}
       />
     </div>
   )

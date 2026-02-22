@@ -26,6 +26,8 @@ import { ThreadedView } from "./threaded-view"
 import { GitBranch } from "lucide-react"
 import { ConflictView } from "./conflict-view"
 import { ManipulationView } from "./manipulation-view"
+import { HFChatWidget } from "./hf-chat-widget"
+import { HFSettingsModal } from "./hf-settings-modal"
 
 interface GroupViewerProps {
   data: TelegramExport
@@ -50,6 +52,7 @@ export function GroupViewer({ data, onReset, mediaFileMap, folderName, onMediaFo
   const [membersOpen, setMembersOpen] = useState(false)
   const [conflictOpen, setConflictOpen] = useState(false)
   const [manipulationOpen, setManipulationOpen] = useState(false)
+  const [hfSettingsOpen, setHfSettingsOpen] = useState(false)
   const [displayToggles, setDisplayToggles] = useState<DisplayToggles>({
     showMedia: true,
     showLinkPreviews: true,
@@ -405,6 +408,17 @@ export function GroupViewer({ data, onReset, mediaFileMap, folderName, onMediaFo
           New file
         </button>
       </div>
+      {/* HF AI Chat */}
+      <HFChatWidget
+        messages={data.messages}
+        onOpenSettings={() => setHfSettingsOpen(true)}
+      />
+
+      {/* HF Settings Modal */}
+      <HFSettingsModal
+        isOpen={hfSettingsOpen}
+        onClose={() => setHfSettingsOpen(false)}
+      />
     </div>
   )
 }
