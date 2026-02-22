@@ -1,5 +1,5 @@
-// Hugging Face API via local proxy (fixes CORS)
-const API_URL = "/api/chat"
+// Google Gemini API - works directly in browser (no CORS issues)
+const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
 
 export interface HFMessage {
   role: "system" | "user" | "assistant"
@@ -22,30 +22,42 @@ export class HFAPIError extends Error {
 }
 
 /**
- * Send chat message via local API proxy
+ * Send chat message to Gemini API (direct from browser)
  */
 export async function sendHFMessage(
   token: string,
   messages: HFMessage[],
   maxTokens = 512
 ): Promise<string> {
-  const response = await fetch(API_URL, {
+  // Build prompt from messages
+  const systemMessage = messages.find(m => m.role === "system")
+  const userMessage = messages.find(m => m.role === "user")
+  
+  const prompt = systemMessage 
+    ? `${systemMessage.content}\n\nQuestion: ${userMessage?.content || ""}`
+    : userMessage?.content || ""
+
+  const response = await fetch(`${GEMINI_API_URL}?key=${token}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      token,
-      messages,
-      maxTokens,
+      contents: [{
+        parts: [{ text: prompt }]
+      }],
+      generationConfig: {
+        maxOutputTokens: maxTokens,
+        temperature: 0.7,
+      }
     }),
   })
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ error: "Unknown error" }))
+    const errorData = await response.json().catch(() => ({ error: { message: "Unknown error" } }))
     const isRateLimit = response.status === 429
     throw new HFAPIError(
-      errorData.error || `API Error: ${response.status}`,
+      errorData.error?.message || `API Error: ${response.status}`,
       response.status,
       isRateLimit
     )
@@ -53,8 +65,8 @@ export async function sendHFMessage(
 
   const result = await response.json()
   
-  if (result.generated_text) {
-    return result.generated_text.trim()
+  if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
+    return result.candidates[0].content.parts[0].text.trim()
   }
 
   throw new HFAPIError("Unexpected response format from API")
@@ -149,19 +161,17 @@ function buildConversationSummary(
 }
 
 /**
- * Check if model is available via local proxy
+ * Check if Gemini API is working
  */
 export async function checkModelStatus(token: string): Promise<boolean> {
   try {
-    const response = await fetch(API_URL, {
+    const response = await fetch(`${GEMINI_API_URL}?key=${token}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        token,
-        messages: [{ role: "user", content: "Hi" }],
-        maxTokens: 5,
+        contents: [{ parts: [{ text: "Hi" }] }],
       }),
     })
     
@@ -172,7 +182,7 @@ export async function checkModelStatus(token: string): Promise<boolean> {
 }
 
 /**
- * Get Hugging Face token from localStorage
+ * Get API token from localStorage
  */
 export function getHFToken(): string | null {
   if (typeof window === "undefined") return null

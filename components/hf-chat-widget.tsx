@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react"
 import { MessageSquare, X, Send, Settings, Loader2, Bot, User } from "lucide-react"
 import type { TelegramMessage } from "@/lib/telegram-types"
 import { getMessageText } from "@/lib/telegram-types"
-import { sendHFMessage, buildChatContext, HFAPIError, getHFToken } from "@/lib/hf-api"
+import { sendHFMessage, buildChatContext, HFAPIError, getHFToken } from "@/lib/gemini-api"
 
 interface HFChatWidgetProps {
   messages: TelegramMessage[]
@@ -227,7 +227,7 @@ export function HFChatWidget({ messages, onOpenSettings }: HFChatWidgetProps) {
           {!hasToken && !error && (
             <div className="mx-4 mb-2 rounded-lg bg-amber-500/10 border border-amber-500/20 px-3 py-2">
               <p className="text-xs text-amber-700">
-                Set your Hugging Face token to start chatting.{" "}
+                Set your Gemini API token to start chatting.{" "}
                 <button
                   onClick={onOpenSettings}
                   className="font-medium underline hover:text-amber-800"
@@ -261,7 +261,7 @@ export function HFChatWidget({ messages, onOpenSettings }: HFChatWidgetProps) {
               </button>
             </div>
             <p className="mt-1.5 text-[10px] text-muted-foreground text-center">
-              Powered by Hugging Face • Free tier available
+              Powered by Google Gemini • Free tier available
             </p>
           </div>
         </div>

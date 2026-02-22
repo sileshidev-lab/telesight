@@ -50,7 +50,7 @@ export function HFSettingsModal({ isOpen, onClose }: HFSettingsModalProps) {
           <div>
             <h2 className="text-lg font-semibold text-foreground">AI Chat Settings</h2>
             <p className="text-xs text-muted-foreground">
-              Connect to Hugging Face for AI-powered chat
+              Connect to Google Gemini for AI-powered chat
             </p>
           </div>
           <button
@@ -73,24 +73,24 @@ export function HFSettingsModal({ isOpen, onClose }: HFSettingsModalProps) {
 
           <div>
             <label className="mb-1.5 block text-sm font-medium text-foreground">
-              Hugging Face Access Token
+              Gemini API Key
             </label>
             <input
               type="password"
               value={token}
               onChange={(e) => setToken(e.target.value)}
-              placeholder="hf_xxxxx..."
+              placeholder="AIza..."
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
             />
             <p className="mt-1.5 text-xs text-muted-foreground">
-              Get your token from{" "}
+              Get your key from{" "}
               <a
-                href="https://huggingface.co/settings/tokens"
+                href="https://makersuite.google.com/app/apikey"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-0.5 text-primary hover:underline"
               >
-                huggingface.co/settings/tokens
+                Google AI Studio
                 <ExternalLink className="h-3 w-3" />
               </a>
             </p>
