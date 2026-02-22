@@ -26,8 +26,7 @@ interface GroupHeaderProps {
   onGalleryClick?: () => void
   onInsightsClick?: () => void
   onMembersClick?: () => void
-  onConflictClick?: () => void
-  onManipulationClick?: () => void
+  onSentimentClick?: () => void
 }
 
 export function GroupHeader({
@@ -37,8 +36,7 @@ export function GroupHeader({
   onGalleryClick,
   onInsightsClick,
   onMembersClick,
-  onConflictClick,
-  onManipulationClick,
+  onSentimentClick,
 }: GroupHeaderProps) {
   const startDate = stats.dateRange.start
     ? format(new Date(stats.dateRange.start), "MMM yyyy")
@@ -121,22 +119,13 @@ export function GroupHeader({
                 Insights
               </button>
             )}
-            {onConflictClick && (
+            {onSentimentClick && (
               <button
-                onClick={onConflictClick}
-                className="flex items-center gap-1.5 rounded-lg bg-red-500/10 border border-red-500/20 px-3 py-1.5 text-xs font-medium text-red-500 transition-all hover:bg-red-500/20"
+                onClick={onSentimentClick}
+                className="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-red-500/10 to-purple-500/10 border border-red-500/20 px-3 py-1.5 text-xs font-medium text-foreground transition-all hover:from-red-500/20 hover:to-purple-500/20"
               >
-                <Flame className="h-3.5 w-3.5" />
-                Conflicts
-              </button>
-            )}
-            {onManipulationClick && (
-              <button
-                onClick={onManipulationClick}
-                className="flex items-center gap-1.5 rounded-lg bg-purple-500/10 border border-purple-500/20 px-3 py-1.5 text-xs font-medium text-purple-500 transition-all hover:bg-purple-500/20"
-              >
-                <Brain className="h-3.5 w-3.5" />
-                Behavior
+                <Brain className="h-3.5 w-3.5 text-purple-500" />
+                <span className="bg-gradient-to-r from-red-500 to-purple-500 bg-clip-text text-transparent">Sentiment</span>
               </button>
             )}
           </div>

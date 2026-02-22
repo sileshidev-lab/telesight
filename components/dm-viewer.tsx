@@ -36,8 +36,7 @@ import { ReplyGraphView } from "./reply-graph-view"
 import { MediaGallery } from "./media-gallery"
 import { CalendarView } from "./calendar-view"
 import { ThreadedView } from "./threaded-view"
-import { ConflictView } from "./conflict-view"
-import { ManipulationView } from "./manipulation-view"
+import { SentimentView } from "./sentiment-view"
 import { AIChatWidget } from "./ai-chat-widget"
 
 interface DMViewerProps {
@@ -212,8 +211,7 @@ function DMHeader({
   totalReactions,
   onStatsClick,
   onInsightsClick,
-  onConflictClick,
-  onManipulationClick,
+  onSentimentClick,
   onGraphClick,
   onGalleryClick,
   onCalendarClick,
@@ -225,8 +223,7 @@ function DMHeader({
   totalReactions: number
   onStatsClick: () => void
   onInsightsClick: () => void
-  onConflictClick: () => void
-  onManipulationClick: () => void
+  onSentimentClick?: () => void
   onGraphClick: () => void
   onGalleryClick: () => void
   onCalendarClick: () => void
@@ -281,18 +278,11 @@ function DMHeader({
               <span className="hidden sm:inline">Insights</span>
             </button>
             <button
-              onClick={onConflictClick}
-              className="flex items-center gap-1.5 rounded-lg bg-red-500/10 border border-red-500/20 px-2.5 py-1.5 text-xs font-medium text-red-500 transition-all hover:bg-red-500/20"
-            >
-              <Flame className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Conflicts</span>
-            </button>
-            <button
-              onClick={onManipulationClick}
+              onClick={onSentimentClick}
               className="flex items-center gap-1.5 rounded-lg bg-purple-500/10 border border-purple-500/20 px-2.5 py-1.5 text-xs font-medium text-purple-500 transition-all hover:bg-purple-500/20"
             >
               <Brain className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Behavior</span>
+              <span className="hidden sm:inline">Sentiment</span>
             </button>
             <button
               onClick={onGraphClick}
@@ -358,8 +348,7 @@ export function DMViewer({
   const [showSearch, setShowSearch] = useState(false)
   const [statsOpen, setStatsOpen] = useState(false)
   const [insightsOpen, setInsightsOpen] = useState(false)
-  const [conflictOpen, setConflictOpen] = useState(false)
-  const [manipulationOpen, setManipulationOpen] = useState(false)
+  const [sentimentOpen, setSentimentOpen] = useState(false)
   const [graphOpen, setGraphOpen] = useState(false)
   const [galleryOpen, setGalleryOpen] = useState(false)
   const [calendarOpen, setCalendarOpen] = useState<{ year: number; month: number } | null>(null)
@@ -451,8 +440,7 @@ export function DMViewer({
           totalReactions={stats.totalReactions}
           onStatsClick={() => setStatsOpen(true)}
           onInsightsClick={() => setInsightsOpen(true)}
-          onConflictClick={() => setConflictOpen(true)}
-          onManipulationClick={() => setManipulationOpen(true)}
+          onSentimentClick={() => setSentimentOpen(true)}
           onGraphClick={() => setGraphOpen(true)}
           onGalleryClick={() => setGalleryOpen(true)}
           onCalendarClick={() => {
@@ -604,26 +592,13 @@ export function DMViewer({
         <InsightsView messages={data.messages} onClose={() => setInsightsOpen(false)} />
       )}
 
-      {/* Conflict detection overlay */}
-      {conflictOpen && (
-        <ConflictView
+      {/* Sentiment Analysis overlay */}
+      {sentimentOpen && (
+        <SentimentView
           messages={data.messages}
-          onClose={() => setConflictOpen(false)}
+          onClose={() => setSentimentOpen(false)}
           onPostClick={(msg) => {
-            setConflictOpen(false)
-            setSelectedPost(msg)
-          }}
-          mediaFileMap={mediaFileMap}
-        />
-      )}
-
-      {/* Manipulation detection overlay */}
-      {manipulationOpen && (
-        <ManipulationView
-          messages={data.messages}
-          onClose={() => setManipulationOpen(false)}
-          onPostClick={(msg) => {
-            setManipulationOpen(false)
+            setSentimentOpen(false)
             setSelectedPost(msg)
           }}
           mediaFileMap={mediaFileMap}

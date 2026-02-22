@@ -23,6 +23,7 @@ import { MediaGallery } from "./media-gallery"
 import { InsightsView } from "./insights-view"
 import { ConflictView } from "./conflict-view"
 import { ManipulationView } from "./manipulation-view"
+import { SentimentView } from "./sentiment-view"
 import { AIChatWidget } from "./ai-chat-widget"
 
 
@@ -46,8 +47,7 @@ export function ChannelViewer({ data, onReset, mediaFileMap, folderName, onMedia
   const [graphOpen, setGraphOpen] = useState(false)
   const [galleryOpen, setGalleryOpen] = useState(false)
   const [insightsOpen, setInsightsOpen] = useState(false)
-  const [conflictOpen, setConflictOpen] = useState(false)
-  const [manipulationOpen, setManipulationOpen] = useState(false)
+  const [sentimentOpen, setSentimentOpen] = useState(false)
   const [displayToggles, setDisplayToggles] = useState<DisplayToggles>({
     showMedia: true,
     showLinkPreviews: true,
@@ -169,8 +169,7 @@ export function ChannelViewer({ data, onReset, mediaFileMap, folderName, onMedia
         onGraphClick={() => setGraphOpen(true)}
         onGalleryClick={() => setGalleryOpen(true)}
         onInsightsClick={() => setInsightsOpen(true)}
-        onConflictClick={() => setConflictOpen(true)}
-        onManipulationClick={() => setManipulationOpen(true)}
+        onSentimentClick={() => setSentimentOpen(true)}
       />
       <FilterToolbar
         searchQuery={searchQuery}
@@ -243,26 +242,13 @@ export function ChannelViewer({ data, onReset, mediaFileMap, folderName, onMedia
         />
       )}
 
-      {/* Conflict detection overlay */}
-      {conflictOpen && (
-        <ConflictView
+      {/* Sentiment Analysis overlay */}
+      {sentimentOpen && (
+        <SentimentView
           messages={data.messages}
-          onClose={() => setConflictOpen(false)}
+          onClose={() => setSentimentOpen(false)}
           onPostClick={(msg) => {
-            setConflictOpen(false)
-            openPost(msg)
-          }}
-          mediaFileMap={mediaFileMap}
-        />
-      )}
-
-      {/* Manipulation detection overlay */}
-      {manipulationOpen && (
-        <ManipulationView
-          messages={data.messages}
-          onClose={() => setManipulationOpen(false)}
-          onPostClick={(msg) => {
-            setManipulationOpen(false)
+            setSentimentOpen(false)
             openPost(msg)
           }}
           mediaFileMap={mediaFileMap}

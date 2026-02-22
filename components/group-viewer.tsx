@@ -27,6 +27,7 @@ import { GitBranch } from "lucide-react"
 import { ConflictView } from "./conflict-view"
 import { ManipulationView } from "./manipulation-view"
 import { AIChatWidget } from "./ai-chat-widget"
+import { SentimentView } from "./sentiment-view"
 
 interface GroupViewerProps {
   data: TelegramExport
@@ -49,8 +50,7 @@ export function GroupViewer({ data, onReset, mediaFileMap, folderName, onMediaFo
   const [galleryOpen, setGalleryOpen] = useState(false)
   const [insightsOpen, setInsightsOpen] = useState(false)
   const [membersOpen, setMembersOpen] = useState(false)
-  const [conflictOpen, setConflictOpen] = useState(false)
-  const [manipulationOpen, setManipulationOpen] = useState(false)
+  const [sentimentOpen, setSentimentOpen] = useState(false)
   const [displayToggles, setDisplayToggles] = useState<DisplayToggles>({
     showMedia: true,
     showLinkPreviews: true,
@@ -154,8 +154,7 @@ export function GroupViewer({ data, onReset, mediaFileMap, folderName, onMediaFo
         onGalleryClick={() => setGalleryOpen(true)}
         onInsightsClick={() => setInsightsOpen(true)}
         onMembersClick={() => setMembersOpen(true)}
-        onConflictClick={() => setConflictOpen(true)}
-        onManipulationClick={() => setManipulationOpen(true)}
+        onSentimentClick={() => setSentimentOpen(true)}
       />
 
       {/* Topic/Chronological toggle bar */}
@@ -306,26 +305,13 @@ export function GroupViewer({ data, onReset, mediaFileMap, folderName, onMediaFo
         />
       )}
 
-      {/* Conflict detection overlay */}
-      {conflictOpen && (
-        <ConflictView
+      {/* Sentiment Analysis overlay */}
+      {sentimentOpen && (
+        <SentimentView
           messages={data.messages}
-          onClose={() => setConflictOpen(false)}
+          onClose={() => setSentimentOpen(false)}
           onPostClick={(msg) => {
-            setConflictOpen(false)
-            openPost(msg)
-          }}
-          mediaFileMap={mediaFileMap}
-        />
-      )}
-
-      {/* Manipulation detection overlay */}
-      {manipulationOpen && (
-        <ManipulationView
-          messages={data.messages}
-          onClose={() => setManipulationOpen(false)}
-          onPostClick={(msg) => {
-            setManipulationOpen(false)
+            setSentimentOpen(false)
             openPost(msg)
           }}
           mediaFileMap={mediaFileMap}
