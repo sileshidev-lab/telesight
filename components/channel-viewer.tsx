@@ -25,6 +25,7 @@ import { ConflictView } from "./conflict-view"
 import { ManipulationView } from "./manipulation-view"
 import { HFChatWidget } from "./hf-chat-widget"
 import { HFSettingsModal } from "./hf-settings-modal"
+import { AIChatWidget } from "./ai-chat-widget"
 
 
 interface ChannelViewerProps {
@@ -357,17 +358,8 @@ export function ChannelViewer({ data, onReset, mediaFileMap, folderName, onMedia
           New file
         </button>
       </div>
-      {/* HF AI Chat */}
-      <HFChatWidget
-        messages={data.messages}
-        onOpenSettings={() => setHfSettingsOpen(true)}
-      />
-
-      {/* HF Settings Modal */}
-      <HFSettingsModal
-        isOpen={hfSettingsOpen}
-        onClose={() => setHfSettingsOpen(false)}
-      />
+      {/* AI Chat - Puter.js (free, no API key) */}
+      <AIChatWidget messages={data.messages} />
     </div>
   )
 }

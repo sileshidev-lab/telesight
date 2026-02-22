@@ -1,34 +1,91 @@
-// Google Gemini API - works directly in browser (no CORS issues)
-const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent"
+// Puter.js AI API - Free, no API key needed, works in browser
+// Load script: <script src="https://js.puter.com/v2/"></script>
 
-export interface HFMessage {
+declare global {
+  interface Window {
+    puter?: {
+      ai?: {
+        chat: (message: string, options?: { model?: string; stream?: boolean }) => Promise<string>
+      }
+    }
+  }
+}
+
+export interface ChatMessage {
   role: "system" | "user" | "assistant"
   content: string
 }
 
-export interface HFChatResponse {
-  generated_text: string
-}
-
-export class HFAPIError extends Error {
-  constructor(
-    message: string,
-    public statusCode?: number,
-    public isRateLimit = false
-  ) {
+export class AIError extends Error {
+  constructor(message: string) {
     super(message)
-    this.name = "HFAPIError"
+    this.name = "AIError"
   }
 }
 
 /**
- * Send chat message to Gemini API (direct from browser)
+ * Load Puter.js script dynamically
  */
-export async function sendHFMessage(
-  token: string,
-  messages: HFMessage[],
-  maxTokens = 512
+export function loadPuterScript(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (typeof window === "undefined") {
+      reject(new Error("Cannot load Puter in server environment"))
+      return
+    }
+
+    // Already loaded
+    if (window.puter?.ai) {
+      resolve()
+      return
+    }
+
+    const script = document.createElement("script")
+    script.src = "https://js.puter.com/v2/"
+    script.async = true
+    script.onload = () => {
+      // Wait for puter to initialize
+      const checkPuter = setInterval(() => {
+        if (window.puter?.ai) {
+          clearInterval(checkPuter)
+          resolve()
+        }
+      }, 100)
+
+      // Timeout after 10 seconds
+      setTimeout(() => {
+        clearInterval(checkPuter)
+        if (!window.puter?.ai) {
+          reject(new Error("Puter.js failed to load"))
+        }
+      }, 10000)
+    }
+    script.onerror = () => reject(new Error("Failed to load Puter.js script"))
+    document.head.appendChild(script)
+  })
+}
+
+/**
+ * Check if Puter AI is ready
+ */
+export function isPuterReady(): boolean {
+  return typeof window !== "undefined" && !!window.puter?.ai
+}
+
+/**
+ * Send chat message via Puter AI (free, no API key)
+ */
+export async function sendAIMessage(
+  messages: ChatMessage[],
+  model = "gpt-5-nano"
 ): Promise<string> {
+  if (!isPuterReady()) {
+    await loadPuterScript()
+  }
+
+  if (!window.puter?.ai) {
+    throw new AIError("AI service not available")
+  }
+
   // Build prompt from messages
   const systemMessage = messages.find(m => m.role === "system")
   const userMessage = messages.find(m => m.role === "user")
@@ -37,39 +94,12 @@ export async function sendHFMessage(
     ? `${systemMessage.content}\n\nQuestion: ${userMessage?.content || ""}`
     : userMessage?.content || ""
 
-  const response = await fetch(`${GEMINI_API_URL}?key=${token}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      contents: [{
-        parts: [{ text: prompt }]
-      }],
-      generationConfig: {
-        maxOutputTokens: maxTokens,
-        temperature: 0.7,
-      }
-    }),
-  })
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ error: { message: "Unknown error" } }))
-    const isRateLimit = response.status === 429
-    throw new HFAPIError(
-      errorData.error?.message || `API Error: ${response.status}`,
-      response.status,
-      isRateLimit
-    )
+  try {
+    const response = await window.puter.ai.chat(prompt, { model })
+    return response
+  } catch (err) {
+    throw new AIError(err instanceof Error ? err.message : "Failed to get AI response")
   }
-
-  const result = await response.json()
-  
-  if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
-    return result.candidates[0].content.parts[0].text.trim()
-  }
-
-  throw new HFAPIError("Unexpected response format from API")
 }
 
 /**
@@ -78,7 +108,7 @@ export async function sendHFMessage(
 export function buildChatContext(
   messages: { from?: string; text?: string; date: string }[],
   question: string
-): HFMessage[] {
+): ChatMessage[] {
   // Get relevant messages (search for keywords from question)
   const relevant = findRelevantMessages(messages, question)
   
@@ -94,7 +124,9 @@ When answering:
 2. Quote relevant message text when possible
 3. If you can't find the information, say so clearly
 4. Help the user find specific messages or understand conversation patterns
-5. Always reference message IDs or dates when mentioning specific messages`
+5. Always reference message dates when mentioning specific messages
+
+Answer the user's question based on the context above.`
 
   return [
     { role: "system", content: systemPrompt },
@@ -109,12 +141,12 @@ function findRelevantMessages(
   messages: { from?: string; text?: string; date: string }[],
   question: string
 ): { from?: string; text?: string; date: string; id?: number }[] {
-  // Extract keywords (simple approach - could be improved with NLP)
+  // Extract keywords (simple approach)
   const keywords = question
     .toLowerCase()
     .split(/\s+/)
     .filter(w => w.length > 3)
-    .filter(w => !["what", "when", "where", "which", "find", "tell", "about", "from", "this", "that", "with", "have", "sent"].includes(w))
+    .filter(w => !["what", "when", "where", "which", "find", "tell", "about", "from", "this", "that", "with", "have", "sent", "they", "them", "their", "there", "then", "than"].includes(w))
   
   // Score messages by keyword matches
   const scored = messages
@@ -158,33 +190,4 @@ function buildConversationSummary(
     .join("\n")
 
   return `Relevant Messages:\n${summary}`
-}
-
-/**
- * Check if Gemini API is working
- */
-export async function checkModelStatus(token: string): Promise<boolean> {
-  try {
-    const response = await fetch(`${GEMINI_API_URL}?key=${token}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: "Hi" }] }],
-      }),
-    })
-    
-    return response.ok
-  } catch {
-    return false
-  }
-}
-
-/**
- * Get API token from localStorage
- */
-export function getHFToken(): string | null {
-  if (typeof window === "undefined") return null
-  return localStorage.getItem("hf_token")
 }

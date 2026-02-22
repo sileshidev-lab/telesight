@@ -1,14 +1,13 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { MessageSquare, X, Send, Settings, Loader2, Bot, User } from "lucide-react"
+import { MessageSquare, X, Send, Loader2, Bot, User, AlertCircle } from "lucide-react"
 import type { TelegramMessage } from "@/lib/telegram-types"
 import { getMessageText } from "@/lib/telegram-types"
-import { sendHFMessage, buildChatContext, HFAPIError, getHFToken } from "@/lib/gemini-api"
+import { sendAIMessage, buildChatContext, AIError, loadPuterScript, isPuterReady } from "@/lib/puter-api"
 
-interface HFChatWidgetProps {
+interface AIChatWidgetProps {
   messages: TelegramMessage[]
-  onOpenSettings: () => void
 }
 
 interface ChatMessage {
@@ -19,7 +18,7 @@ interface ChatMessage {
   isLoading?: boolean
 }
 
-export function HFChatWidget({ messages, onOpenSettings }: HFChatWidgetProps) {
+export function AIChatWidget({ messages }: AIChatWidgetProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [input, setInput] = useState("")
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
@@ -32,10 +31,24 @@ export function HFChatWidget({ messages, onOpenSettings }: HFChatWidgetProps) {
   ])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isPuterLoaded, setIsPuterLoaded] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const token = typeof window !== "undefined" ? getHFToken() : null
+  // Load Puter.js on mount
+  useEffect(() => {
+    if (isPuterReady()) {
+      setIsPuterLoaded(true)
+      return
+    }
+    
+    loadPuterScript()
+      .then(() => setIsPuterLoaded(true))
+      .catch((err) => {
+        console.error("Puter load error:", err)
+        setError("Failed to load AI service. Please check your internet connection and refresh.")
+      })
+  }, [])
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -52,8 +65,8 @@ export function HFChatWidget({ messages, onOpenSettings }: HFChatWidgetProps) {
   const handleSend = async () => {
     if (!input.trim() || isLoading) return
 
-    if (!token) {
-      setError("Please set your Hugging Face token first. Click the settings icon.")
+    if (!isPuterLoaded) {
+      setError("AI service is still loading. Please wait a moment and try again.")
       return
     }
 
@@ -89,7 +102,7 @@ export function HFChatWidget({ messages, onOpenSettings }: HFChatWidgetProps) {
 
       const context = buildChatContext(messageData, userMessage.content)
       
-      const response = await sendHFMessage(token, context, 512)
+      const response = await sendAIMessage(context)
 
       // Replace loading message with actual response
       setChatMessages(prev => 
@@ -103,14 +116,8 @@ export function HFChatWidget({ messages, onOpenSettings }: HFChatWidgetProps) {
     } catch (err) {
       setChatMessages(prev => prev.filter(m => m.id !== "loading"))
       
-      if (err instanceof HFAPIError) {
-        if (err.isRateLimit) {
-          setError("Rate limit reached. Please wait a minute and try again.")
-        } else if (err.statusCode === 401) {
-          setError("Invalid token. Please check your Hugging Face token.")
-        } else {
-          setError(err.message)
-        }
+      if (err instanceof AIError) {
+        setError(err.message)
       } else {
         setError("Failed to get response. Please try again.")
       }
@@ -125,8 +132,6 @@ export function HFChatWidget({ messages, onOpenSettings }: HFChatWidgetProps) {
       handleSend()
     }
   }
-
-  const hasToken = !!token
 
   return (
     <>
@@ -153,26 +158,17 @@ export function HFChatWidget({ messages, onOpenSettings }: HFChatWidgetProps) {
               <div>
                 <h3 className="text-sm font-semibold text-foreground">AI Assistant</h3>
                 <p className="text-[10px] text-muted-foreground">
-                  {hasToken ? "Ready to help" : "Token required"}
+                  {isPuterLoaded ? "Ready to help" : "Loading..."}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-1">
-              <button
-                onClick={onOpenSettings}
-                className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-                title="Settings"
-              >
-                <Settings className="h-4 w-4" />
-              </button>
-              <button
-                onClick={() => setIsOpen(false)}
-                className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-                aria-label="Close"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
+            <button
+              onClick={() => setIsOpen(false)}
+              className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+              aria-label="Close"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
 
           {/* Messages */}
@@ -218,22 +214,18 @@ export function HFChatWidget({ messages, onOpenSettings }: HFChatWidgetProps) {
 
           {/* Error */}
           {error && (
-            <div className="mx-4 mb-2 rounded-lg bg-red-500/10 border border-red-500/20 px-3 py-2 text-xs text-red-600">
+            <div className="mx-4 mb-2 rounded-lg bg-red-500/10 border border-red-500/20 px-3 py-2 text-xs text-red-600 flex items-start gap-2">
+              <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
               {error}
             </div>
           )}
 
-          {/* No token warning */}
-          {!hasToken && !error && (
+          {/* Not loaded warning */}
+          {!isPuterLoaded && !error && (
             <div className="mx-4 mb-2 rounded-lg bg-amber-500/10 border border-amber-500/20 px-3 py-2">
-              <p className="text-xs text-amber-700">
-                Set your Gemini API token to start chatting.{" "}
-                <button
-                  onClick={onOpenSettings}
-                  className="font-medium underline hover:text-amber-800"
-                >
-                  Open settings
-                </button>
+              <p className="text-xs text-amber-700 flex items-center gap-2">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                Loading AI service...
               </p>
             </div>
           )}
@@ -247,13 +239,13 @@ export function HFChatWidget({ messages, onOpenSettings }: HFChatWidgetProps) {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder={hasToken ? "Ask about the conversation..." : "Set token first..."}
-                disabled={!hasToken || isLoading}
+                placeholder={isPuterLoaded ? "Ask about the conversation..." : "Loading..."}
+                disabled={!isPuterLoaded || isLoading}
                 className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground outline-none placeholder:text-muted-foreground focus:border-primary disabled:opacity-50"
               />
               <button
                 onClick={handleSend}
-                disabled={!hasToken || !input.trim() || isLoading}
+                disabled={!isPuterLoaded || !input.trim() || isLoading}
                 className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground transition-all hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
                 aria-label="Send"
               >
@@ -261,7 +253,7 @@ export function HFChatWidget({ messages, onOpenSettings }: HFChatWidgetProps) {
               </button>
             </div>
             <p className="mt-1.5 text-[10px] text-muted-foreground text-center">
-              Powered by Google Gemini • Free tier available
+              Powered by Puter AI • Free • No API key needed
             </p>
           </div>
         </div>
