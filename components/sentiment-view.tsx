@@ -32,7 +32,7 @@ interface SentimentViewProps {
   mediaFileMap?: MediaFileMap | null
 }
 
-type TabType = "conflicts" | "manipulation" | "overview"
+type TabType = "conflicts" | "manipulation" | "overview" | "hf_analysis"
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
 
@@ -305,6 +305,19 @@ export function SentimentView({
               <Shield className="h-3 w-3" />
               Behavior ({manipulations.length})
             </button>
+            {hfAnalysis.results && (
+              <button
+                onClick={() => setActiveTab("hf_analysis")}
+                className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all flex items-center gap-1.5 ${
+                  activeTab === "hf_analysis"
+                    ? "bg-green-500/20 text-green-600"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Brain className="h-3 w-3" />
+                HF ({hfAnalysis.results.length})
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -575,6 +588,92 @@ export function SentimentView({
                 ))}
               </div>
             )}
+          </>
+        )}
+
+        {/* HF Analysis Tab */}
+        {activeTab === "hf_analysis" && hfAnalysis.results && (
+          <>
+            {/* HF Stats Grid */}
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-4 mb-8">
+              <StatCard
+                icon={BarChart3}
+                label="HF Analyzed"
+                value={hfAnalysis.results.length}
+                sub="messages processed"
+                color="text-green-500"
+              />
+              <StatCard
+                icon={Brain}
+                label="Positive"
+                value={hfAnalysis.results.filter(r => r.sentiment === "positive" || r.score > 0.6).length}
+                sub="high confidence"
+                color="text-blue-500"
+              />
+              <StatCard
+                icon={Flame}
+                label="Negative"
+                value={hfAnalysis.results.filter(r => r.sentiment === "negative" || r.score < 0.4).length}
+                sub="low scores"
+                color="text-red-500"
+              />
+              <StatCard
+                icon={Shield}
+                label="Neutral"
+                value={hfAnalysis.results.filter(r => r.sentiment === "neutral" || (r.score >= 0.4 && r.score <= 0.6)).length}
+                sub="middle range"
+                color="text-yellow-500"
+              />
+            </div>
+
+            {/* HF Results List */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider flex items-center gap-2">
+                <Brain className="h-3.5 w-3.5" />
+                Hugging Face AI Analysis Results
+              </h3>
+              {hfAnalysis.results.slice(0, 20).map((result) => (
+                <div
+                  key={result.id}
+                  className="flex items-start gap-3 px-4 py-3 rounded-xl border border-border bg-card"
+                >
+                  <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+                    result.sentiment === "positive" || result.score > 0.6
+                      ? "bg-blue-500/10 text-blue-500"
+                      : result.sentiment === "negative" || result.score < 0.4
+                      ? "bg-red-500/10 text-red-500"
+                      : "bg-yellow-500/10 text-yellow-500"
+                  }`}>
+                    {result.sentiment === "positive" || result.score > 0.6 ? (
+                      <Brain className="h-4 w-4" />
+                    ) : result.sentiment === "negative" || result.score < 0.4 ? (
+                      <Flame className="h-4 w-4" />
+                    ) : (
+                      <Shield className="h-4 w-4" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className={`text-xs font-medium capitalize ${
+                        result.sentiment === "positive" || result.score > 0.6
+                          ? "text-blue-500"
+                          : result.sentiment === "negative" || result.score < 0.4
+                          ? "text-red-500"
+                          : "text-yellow-500"
+                      }`}>
+                        {result.sentiment} ({(result.score * 100).toFixed(0)}%)
+                      </span>
+                      <span className="text-[10px] text-muted-foreground">
+                        ID: {result.id}
+                      </span>
+                    </div>
+                    <p className="text-sm text-foreground truncate">
+                      {result.text}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </>
         )}
       </div>
