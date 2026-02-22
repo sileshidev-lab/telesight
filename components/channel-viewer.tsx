@@ -14,6 +14,7 @@ import {
 import { ArrowLeft, FolderOpen, Check } from "lucide-react"
 import { buildMediaFileMap, type MediaFileMap } from "@/hooks/use-media-url"
 import { useRef } from "react"
+import { CalendarView } from "./calendar-view"
 
 interface ChannelViewerProps {
   data: TelegramExport
@@ -29,6 +30,7 @@ export function ChannelViewer({ data, onReset, mediaFileMap, folderName, onMedia
   const [activeFilter, setActiveFilter] = useState<FilterType>("all")
   const [sortDirection, setSortDirection] = useState<SortDirection>("newest")
   const [activeHashtag, setActiveHashtag] = useState<string | null>(null)
+  const [calendarOpen, setCalendarOpen] = useState<{ year: number; month: number } | null>(null)
 
   const stats = useMemo(() => computeStats(data), [data])
 
@@ -119,6 +121,10 @@ export function ChannelViewer({ data, onReset, mediaFileMap, folderName, onMedia
     setActiveHashtag(null)
   }, [])
 
+  const openCalendar = useCallback((year: number, month: number) => {
+    setCalendarOpen({ year, month })
+  }, [])
+
   return (
     <div className="min-h-screen bg-background">
       <ChannelHeader stats={stats} />
@@ -143,7 +149,18 @@ export function ChannelViewer({ data, onReset, mediaFileMap, folderName, onMedia
         messageMap={messageMap}
         onHashtagClick={handleHashtagClick}
         mediaFileMap={mediaFileMap}
+        onMonthClick={openCalendar}
       />
+
+      {/* Calendar overlay */}
+      {calendarOpen && (
+        <CalendarView
+          messages={data.messages}
+          initialYear={calendarOpen.year}
+          initialMonth={calendarOpen.month}
+          onClose={() => setCalendarOpen(null)}
+        />
+      )}
 
       {/* Hidden folder input */}
       <input

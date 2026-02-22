@@ -12,11 +12,12 @@ interface MasonryGridProps {
   messageMap: Map<number, TelegramMessage>
   onHashtagClick?: (hashtag: string) => void
   mediaFileMap?: MediaFileMap | null
+  onMonthClick?: (year: number, month: number) => void
 }
 
 const BATCH_SIZE = 40
 
-export function MasonryGrid({ monthGroups, messageMap, onHashtagClick, mediaFileMap }: MasonryGridProps) {
+export function MasonryGrid({ monthGroups, messageMap, onHashtagClick, mediaFileMap, onMonthClick }: MasonryGridProps) {
   const isMobile = useIsMobile()
   const [visibleCount, setVisibleCount] = useState(BATCH_SIZE)
   const sentinelRef = useRef<HTMLDivElement>(null)
@@ -129,17 +130,24 @@ export function MasonryGrid({ monthGroups, messageMap, onHashtagClick, mediaFile
           <div key={colIdx} className="flex flex-col gap-4">
             {col.map((item) => {
               if (item.type === "month-header") {
+                // Parse year/month from the key format "header-YYYY-MM"
+                const keyParts = item.key.replace("header-", "").split("-")
+                const headerYear = parseInt(keyParts[0])
+                const headerMonth = parseInt(keyParts[1]) - 1
+
                 return (
-                  <div
+                  <button
                     key={item.key}
-                    className="flex items-center gap-3 py-2"
+                    onClick={() => onMonthClick?.(headerYear, headerMonth)}
+                    className="flex items-center gap-3 py-2 w-full group cursor-pointer"
+                    aria-label={`View calendar for ${item.label}`}
                   >
-                    <div className="h-px flex-1 bg-border/50" />
-                    <span className="text-xs font-medium text-muted-foreground tracking-wide uppercase">
+                    <div className="h-px flex-1 bg-border/50 group-hover:bg-primary/30 transition-colors" />
+                    <span className="text-xs font-medium text-muted-foreground tracking-wide uppercase group-hover:text-primary transition-colors">
                       {item.label}
                     </span>
-                    <div className="h-px flex-1 bg-border/50" />
-                  </div>
+                    <div className="h-px flex-1 bg-border/50 group-hover:bg-primary/30 transition-colors" />
+                  </button>
                 )
               }
 
