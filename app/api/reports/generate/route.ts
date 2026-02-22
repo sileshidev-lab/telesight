@@ -75,30 +75,32 @@ export async function POST(req: NextRequest) {
       let manipulation = 0
       let fraudDetected = 0
 
-      // Analyze up to 50 messages
-      const messagesToAnalyze = messages.slice(-50)
+      // Analyze up to 20 messages (to avoid timeout)
+      const messagesToAnalyze = messages.slice(-20)
       
-      for (const msg of messagesToAnalyze) {
+      // Run all analyses in parallel
+      const analysisPromises = messagesToAnalyze.map(async (msg: any) => {
         const text = msg.text || ""
         
-        // Conflict analysis
-        const conflictResult = await analyzeWithHF(CONFLICT_PROMPT, text, token)
-        if (conflictResult?.conflict && conflictResult.score > 0.4) {
-          conflicts++
-        }
+        const [conflictResult, manipResult, fraudResult] = await Promise.all([
+          analyzeWithHF(CONFLICT_PROMPT, text, token),
+          analyzeWithHF(MANIPULATION_PROMPT, text, token),
+          analyzeWithHF(FRAUD_PROMPT, text, token)
+        ])
 
-        // Manipulation analysis  
-        const manipResult = await analyzeWithHF(MANIPULATION_PROMPT, text, token)
-        if (manipResult?.manipulation && manipResult.score > 0.4) {
-          manipulation++
+        return {
+          conflict: conflictResult?.conflict && conflictResult.score > 0.4,
+          manipulation: manipResult?.manipulation && manipResult.score > 0.4,
+          fraud: fraudResult?.fraudType !== "none" && fraudResult?.score > 0.4
         }
+      })
 
-        // Fraud analysis
-        const fraudResult = await analyzeWithHF(FRAUD_PROMPT, text, token)
-        if (fraudResult?.fraudType !== "none" && fraudResult?.score > 0.4) {
-          fraudDetected++
-        }
-      }
+      const results = await Promise.all(analysisPromises)
+      
+      // Count results
+      conflicts = results.filter(r => r.conflict).length
+      manipulation = results.filter(r => r.manipulation).length
+      fraudDetected = results.filter(r => r.fraud).length
 
       stats = {
         totalMessages: messages.length,
@@ -231,12 +233,12 @@ function generateHTMLReport(report: any, stats: any, userProfiles: any[]) {
     </div>
   </div>
 
-  ${report.sections.map((s: any) => `
+  ${report.sections?.map((s: any) => `
   <div class="section">
     <h2>${s.title}</h2>
     <p>${s.content}</p>
   </div>
-  `).join('')}
+  `).join('') || ''}
 
   ${userProfiles?.length ? `
   <div class="section">
