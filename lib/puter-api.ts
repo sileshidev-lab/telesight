@@ -5,10 +5,20 @@ declare global {
   interface Window {
     puter?: {
       ai?: {
-        chat: (message: string, options?: { model?: string; stream?: boolean }) => Promise<string>
+        chat: (message: string, options?: { model?: string; stream?: boolean }) => Promise<PuterResponse>
       }
     }
   }
+}
+
+interface PuterResponse {
+  message?: string | { content?: string }
+  index?: number
+  finish_reason?: string
+  usage?: unknown
+  via_ai_chat_service?: boolean
+  toString?: () => string
+  valueOf?: () => unknown
 }
 
 export interface ChatMessage {
@@ -96,7 +106,23 @@ export async function sendAIMessage(
 
   try {
     const response = await window.puter.ai.chat(prompt, { model })
-    return response
+    // Puter returns an object with message property
+    if (typeof response === "object" && response !== null) {
+      // Handle different response formats
+      if (typeof response.message === "string") {
+        return response.message
+      }
+      if (response.message && typeof response.message === "object" && "content" in response.message) {
+        return response.message.content || ""
+      }
+      if (response.toString && typeof response.toString === "function") {
+        return response.toString()
+      }
+      // Fallback: stringify and extract
+      const str = JSON.stringify(response)
+      return str.slice(0, 500) // Prevent huge error messages
+    }
+    return String(response)
   } catch (err) {
     throw new AIError(err instanceof Error ? err.message : "Failed to get AI response")
   }
