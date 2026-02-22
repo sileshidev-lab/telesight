@@ -113,7 +113,7 @@ export async function sendAIMessage(
         return response.message
       }
       if (response.message && typeof response.message === "object" && "content" in response.message) {
-        return response.message.content || ""
+        return (response.message as { content?: string }).content || ""
       }
       if (response.toString && typeof response.toString === "function") {
         return response.toString()

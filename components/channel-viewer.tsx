@@ -23,8 +23,6 @@ import { MediaGallery } from "./media-gallery"
 import { InsightsView } from "./insights-view"
 import { ConflictView } from "./conflict-view"
 import { ManipulationView } from "./manipulation-view"
-import { HFChatWidget } from "./hf-chat-widget"
-import { HFSettingsModal } from "./hf-settings-modal"
 import { AIChatWidget } from "./ai-chat-widget"
 
 
@@ -50,7 +48,6 @@ export function ChannelViewer({ data, onReset, mediaFileMap, folderName, onMedia
   const [insightsOpen, setInsightsOpen] = useState(false)
   const [conflictOpen, setConflictOpen] = useState(false)
   const [manipulationOpen, setManipulationOpen] = useState(false)
-  const [hfSettingsOpen, setHfSettingsOpen] = useState(false)
   const [displayToggles, setDisplayToggles] = useState<DisplayToggles>({
     showMedia: true,
     showLinkPreviews: true,

@@ -26,8 +26,6 @@ import { ThreadedView } from "./threaded-view"
 import { GitBranch } from "lucide-react"
 import { ConflictView } from "./conflict-view"
 import { ManipulationView } from "./manipulation-view"
-import { HFChatWidget } from "./hf-chat-widget"
-import { HFSettingsModal } from "./hf-settings-modal"
 import { AIChatWidget } from "./ai-chat-widget"
 
 interface GroupViewerProps {
@@ -53,7 +51,6 @@ export function GroupViewer({ data, onReset, mediaFileMap, folderName, onMediaFo
   const [membersOpen, setMembersOpen] = useState(false)
   const [conflictOpen, setConflictOpen] = useState(false)
   const [manipulationOpen, setManipulationOpen] = useState(false)
-  const [hfSettingsOpen, setHfSettingsOpen] = useState(false)
   const [displayToggles, setDisplayToggles] = useState<DisplayToggles>({
     showMedia: true,
     showLinkPreviews: true,
