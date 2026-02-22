@@ -226,7 +226,7 @@ function DMHeader({
   const endDate = dateRange.end ? format(new Date(dateRange.end), "MMM d, yyyy") : ""
 
   return (
-    <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-30">
+    <header className="border-b border-border bg-card/50 backdrop-blur-sm">
       <div className="mx-auto max-w-5xl px-4 md:px-6 py-3">
         {/* Row 1: Avatar + info + action buttons */}
         <div className="flex items-start justify-between gap-4">
@@ -416,28 +416,30 @@ export function DMViewer({
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <DMHeader
-        chatName={data.name}
-        participants={participants}
-        messageCount={filteredMessages.length}
-        dateRange={stats.dateRange}
-        totalReactions={stats.totalReactions}
-        onStatsClick={() => setStatsOpen(true)}
-        onInsightsClick={() => setInsightsOpen(true)}
-        onGraphClick={() => setGraphOpen(true)}
-        onGalleryClick={() => setGalleryOpen(true)}
-        onCalendarClick={() => {
-          const lastMsg = data.messages.filter(m => m.type === "message").sort((a, b) =>
-            new Date(b.date).getTime() - new Date(a.date).getTime()
-          )[0]
-          const d = lastMsg ? new Date(lastMsg.date) : new Date()
-          setCalendarOpen({ year: d.getFullYear(), month: d.getMonth() })
-        }}
-      />
+      {/* Sticky header group: header + toolbar stay together */}
+      <div className="sticky top-0 z-30 bg-background/95 backdrop-blur-sm">
+        <DMHeader
+          chatName={data.name}
+          participants={participants}
+          messageCount={filteredMessages.length}
+          dateRange={stats.dateRange}
+          totalReactions={stats.totalReactions}
+          onStatsClick={() => setStatsOpen(true)}
+          onInsightsClick={() => setInsightsOpen(true)}
+          onGraphClick={() => setGraphOpen(true)}
+          onGalleryClick={() => setGalleryOpen(true)}
+          onCalendarClick={() => {
+            const lastMsg = data.messages.filter(m => m.type === "message").sort((a, b) =>
+              new Date(b.date).getTime() - new Date(a.date).getTime()
+            )[0]
+            const d = lastMsg ? new Date(lastMsg.date) : new Date()
+            setCalendarOpen({ year: d.getFullYear(), month: d.getMonth() })
+          }}
+        />
 
-      {/* Secondary toolbar: toggle + search */}
-      <div className="sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur-sm">
-        <div className="mx-auto max-w-5xl px-4 md:px-6 py-1.5 flex items-center gap-3">
+        {/* Secondary toolbar: toggle + search */}
+        <div className="border-b border-border">
+          <div className="mx-auto max-w-5xl px-4 md:px-6 py-1.5 flex items-center gap-3">
           {/* View mode toggle */}
           <div className="flex items-center rounded-lg border border-border bg-secondary/30 p-0.5">
             <button
@@ -491,6 +493,7 @@ export function DMViewer({
               Search
             </button>
           )}
+        </div>
         </div>
       </div>
 
