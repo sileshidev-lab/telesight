@@ -976,41 +976,43 @@ export function InsightsView({ messages, onClose }: InsightsViewProps) {
           <MemberBreakdownSection members={memberStats} primaryColor={primaryColor} />
         )}
 
-        {/* Key Insights cards */}
-        <section>
-          <h2 className="text-sm font-medium text-muted-foreground mb-4 uppercase tracking-wider flex items-center gap-2">
-            <Zap className="h-3.5 w-3.5" />
-            Key Recommendations
-          </h2>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            {data.insights.map((insight, i) => (
-              <div
-                key={i}
-                className={`rounded-xl border p-4 flex gap-3 ${
-                  insight.type === "tip"
-                    ? "border-primary/20 bg-primary/5"
-                    : insight.type === "warning"
-                      ? "border-destructive/20 bg-destructive/5"
-                      : "border-border bg-card"
-                }`}
-              >
-                <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
-                  insight.type === "tip" ? "bg-primary/10" : "bg-secondary"
-                }`}>
-                  <insight.icon className={`h-4 w-4 ${
-                    insight.type === "tip" ? "text-primary" : "text-muted-foreground"
-                  }`} />
+        {/* Key Insights cards (channels only) */}
+        {!isDM && !isGroup && (
+          <section>
+            <h2 className="text-sm font-medium text-muted-foreground mb-4 uppercase tracking-wider flex items-center gap-2">
+              <Zap className="h-3.5 w-3.5" />
+              Key Recommendations
+            </h2>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              {data.insights.map((insight, i) => (
+                <div
+                  key={i}
+                  className={`rounded-xl border p-4 flex gap-3 ${
+                    insight.type === "tip"
+                      ? "border-primary/20 bg-primary/5"
+                      : insight.type === "warning"
+                        ? "border-destructive/20 bg-destructive/5"
+                        : "border-border bg-card"
+                  }`}
+                >
+                  <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
+                    insight.type === "tip" ? "bg-primary/10" : "bg-secondary"
+                  }`}>
+                    <insight.icon className={`h-4 w-4 ${
+                      insight.type === "tip" ? "text-primary" : "text-muted-foreground"
+                    }`} />
+                  </div>
+                  <div className="flex flex-col gap-1 min-w-0">
+                    <span className="text-sm font-semibold text-foreground">{insight.title}</span>
+                    <span className="text-xs text-muted-foreground leading-relaxed">
+                      {insight.description}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex flex-col gap-1 min-w-0">
-                  <span className="text-sm font-semibold text-foreground">{insight.title}</span>
-                  <span className="text-xs text-muted-foreground leading-relaxed">
-                    {insight.description}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Engagement by Hour chart */}
         <section>

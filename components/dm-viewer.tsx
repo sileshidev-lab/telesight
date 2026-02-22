@@ -17,6 +17,11 @@ import {
   Link2,
   Image,
   Forward,
+  Share2,
+  ImageIcon,
+  Calendar,
+  GitBranch,
+  MessageCircle,
 } from "lucide-react"
 import type { TelegramExport, TelegramMessage } from "@/lib/telegram-types"
 import { getMessageText, getDMParticipants, computeStats } from "@/lib/telegram-types"
@@ -25,6 +30,10 @@ import { StatsView } from "./stats-view"
 import { InsightsView } from "./insights-view"
 import { PostDetailView } from "./post-detail-view"
 import { LinkPreview } from "./link-preview"
+import { ReplyGraphView } from "./reply-graph-view"
+import { MediaGallery } from "./media-gallery"
+import { CalendarView } from "./calendar-view"
+import { ThreadedView } from "./threaded-view"
 
 interface DMViewerProps {
   data: TelegramExport
@@ -198,6 +207,9 @@ function DMHeader({
   totalReactions,
   onStatsClick,
   onInsightsClick,
+  onGraphClick,
+  onGalleryClick,
+  onCalendarClick,
 }: {
   chatName: string
   participants: [string, string]
@@ -206,6 +218,9 @@ function DMHeader({
   totalReactions: number
   onStatsClick: () => void
   onInsightsClick: () => void
+  onGraphClick: () => void
+  onGalleryClick: () => void
+  onCalendarClick: () => void
 }) {
   const startDate = dateRange.start ? format(new Date(dateRange.start), "MMM d, yyyy") : ""
   const endDate = dateRange.end ? format(new Date(dateRange.end), "MMM d, yyyy") : ""
@@ -240,20 +255,41 @@ function DMHeader({
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 flex-wrap justify-end">
             <button
               onClick={onStatsClick}
-              className="flex items-center gap-1.5 rounded-lg bg-primary/10 border border-primary/20 px-3 py-1.5 text-xs font-medium text-primary transition-all hover:bg-primary/20"
+              className="flex items-center gap-1.5 rounded-lg bg-primary/10 border border-primary/20 px-2.5 py-1.5 text-xs font-medium text-primary transition-all hover:bg-primary/20"
             >
               <BarChart3 className="h-3.5 w-3.5" />
               Stats
             </button>
             <button
               onClick={onInsightsClick}
-              className="flex items-center gap-1.5 rounded-lg bg-secondary/50 border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-all hover:text-foreground hover:border-primary/30"
+              className="flex items-center gap-1.5 rounded-lg bg-secondary/50 border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-all hover:text-foreground hover:border-primary/30"
             >
               <Lightbulb className="h-3.5 w-3.5" />
               Insights
+            </button>
+            <button
+              onClick={onGraphClick}
+              className="flex items-center gap-1.5 rounded-lg bg-secondary/50 border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-all hover:text-foreground hover:border-primary/30"
+            >
+              <Share2 className="h-3.5 w-3.5" />
+              Graph
+            </button>
+            <button
+              onClick={onGalleryClick}
+              className="flex items-center gap-1.5 rounded-lg bg-secondary/50 border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-all hover:text-foreground hover:border-primary/30"
+            >
+              <ImageIcon className="h-3.5 w-3.5" />
+              Gallery
+            </button>
+            <button
+              onClick={onCalendarClick}
+              className="flex items-center gap-1.5 rounded-lg bg-secondary/50 border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-all hover:text-foreground hover:border-primary/30"
+            >
+              <Calendar className="h-3.5 w-3.5" />
+              Calendar
             </button>
           </div>
         </div>
@@ -299,7 +335,11 @@ export function DMViewer({
   const [showSearch, setShowSearch] = useState(false)
   const [statsOpen, setStatsOpen] = useState(false)
   const [insightsOpen, setInsightsOpen] = useState(false)
+  const [graphOpen, setGraphOpen] = useState(false)
+  const [galleryOpen, setGalleryOpen] = useState(false)
+  const [calendarOpen, setCalendarOpen] = useState<{ year: number; month: number } | null>(null)
   const [selectedPost, setSelectedPost] = useState<TelegramMessage | null>(null)
+  const [viewMode, setViewMode] = useState<"bubble" | "threaded">("bubble")
 
   const participants = useMemo(
     () => getDMParticipants(data.messages) || [data.name, "You"],
@@ -384,6 +424,15 @@ export function DMViewer({
         totalReactions={stats.totalReactions}
         onStatsClick={() => setStatsOpen(true)}
         onInsightsClick={() => setInsightsOpen(true)}
+        onGraphClick={() => setGraphOpen(true)}
+        onGalleryClick={() => setGalleryOpen(true)}
+        onCalendarClick={() => {
+          const lastMsg = data.messages.filter(m => m.type === "message").sort((a, b) =>
+            new Date(b.date).getTime() - new Date(a.date).getTime()
+          )[0]
+          const d = lastMsg ? new Date(lastMsg.date) : new Date()
+          setCalendarOpen({ year: d.getFullYear(), month: d.getMonth() })
+        }}
       />
 
       {/* Search bar */}
@@ -412,57 +461,101 @@ export function DMViewer({
         </div>
       )}
 
+      {/* View mode toggle */}
+      <div className="sticky top-[82px] z-[19] border-b border-border bg-background/95 backdrop-blur-sm">
+        <div className="mx-auto max-w-3xl px-4 py-1.5 flex items-center gap-2">
+          <div className="flex items-center rounded-lg border border-border bg-secondary/30 p-0.5">
+            <button
+              onClick={() => setViewMode("bubble")}
+              className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
+                viewMode === "bubble" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <MessageCircle className="h-3.5 w-3.5" />
+              Bubble
+            </button>
+            <button
+              onClick={() => setViewMode("threaded")}
+              className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
+                viewMode === "threaded" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <GitBranch className="h-3.5 w-3.5" />
+              Threaded
+            </button>
+          </div>
+          {searchQuery && (
+            <span className="text-[10px] text-muted-foreground font-mono ml-auto">
+              {filteredMessages.length} results
+            </span>
+          )}
+        </div>
+      </div>
+
       {/* Chat area */}
       <div className="flex-1">
-        <div className="mx-auto max-w-3xl px-4 py-6 flex flex-col gap-1.5">
-          {messagesWithDates.map((item, idx) => {
-            if (item.type === "date") {
-              return (
-                <div key={item.key} className="flex items-center justify-center my-4">
-                  <div className="rounded-full bg-secondary/60 border border-border px-4 py-1">
-                    <span className="text-[11px] font-medium text-muted-foreground">
-                      {formatDateSeparator(item.date)}
-                    </span>
+        {viewMode === "threaded" ? (
+          <ThreadedView
+            messages={filteredMessages}
+            topics={[]}
+            activeTopic={null}
+            mediaFileMap={mediaFileMap}
+            onPostClick={setSelectedPost}
+            onHashtagClick={() => {}}
+            showMedia={true}
+            showLinkPreviews={true}
+          />
+        ) : (
+          <div className="mx-auto max-w-3xl px-4 py-6 flex flex-col gap-1.5">
+            {messagesWithDates.map((item, idx) => {
+              if (item.type === "date") {
+                return (
+                  <div key={item.key} className="flex items-center justify-center my-4">
+                    <div className="rounded-full bg-secondary/60 border border-border px-4 py-1">
+                      <span className="text-[11px] font-medium text-muted-foreground">
+                        {formatDateSeparator(item.date)}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              )
-            }
-
-            const msg = item.message
-            const isMe = msg.from === personB
-            const senderName = isMe ? personB : personA
-            const color = isMe ? colorB : colorA
-
-            // Show avatar if first message or different sender from previous message
-            let showAvatar = true
-            if (idx > 0) {
-              const prevItem = messagesWithDates[idx - 1]
-              if (prevItem.type === "msg" && prevItem.message.from === msg.from) {
-                showAvatar = false
+                )
               }
-            }
 
-            const replyPreview = msg.reply_to_message_id
-              ? messageMap.get(msg.reply_to_message_id) || null
-              : null
+              const msg = item.message
+              const isMe = msg.from === personB
+              const senderName = isMe ? personB : personA
+              const color = isMe ? colorB : colorA
 
-            return (
-              <ChatBubble
-                key={item.key}
-                message={msg}
-                isMe={isMe}
-                showAvatar={showAvatar}
-                senderName={senderName}
-                color={color}
-                mediaFileMap={mediaFileMap}
-                onReplyClick={handleReplyClick}
-                replyPreview={replyPreview}
-                onPostClick={setSelectedPost}
-              />
-            )
-          })}
-          <div ref={chatEndRef} />
-        </div>
+              // Show avatar if first message or different sender from previous message
+              let showAvatar = true
+              if (idx > 0) {
+                const prevItem = messagesWithDates[idx - 1]
+                if (prevItem.type === "msg" && prevItem.message.from === msg.from) {
+                  showAvatar = false
+                }
+              }
+
+              const replyPreview = msg.reply_to_message_id
+                ? messageMap.get(msg.reply_to_message_id) || null
+                : null
+
+              return (
+                <ChatBubble
+                  key={item.key}
+                  message={msg}
+                  isMe={isMe}
+                  showAvatar={showAvatar}
+                  senderName={senderName}
+                  color={color}
+                  mediaFileMap={mediaFileMap}
+                  onReplyClick={handleReplyClick}
+                  replyPreview={replyPreview}
+                  onPostClick={setSelectedPost}
+                />
+              )
+            })}
+            <div ref={chatEndRef} />
+          </div>
+        )}
       </div>
 
       {/* Stats overlay */}
@@ -477,6 +570,42 @@ export function DMViewer({
       {/* Insights overlay */}
       {insightsOpen && (
         <InsightsView messages={data.messages} onClose={() => setInsightsOpen(false)} />
+      )}
+
+      {/* Data graph overlay */}
+      {graphOpen && (
+        <ReplyGraphView
+          messages={data.messages}
+          onClose={() => setGraphOpen(false)}
+          onPostClick={(msg) => {
+            setGraphOpen(false)
+            setSelectedPost(msg)
+          }}
+        />
+      )}
+
+      {/* Media gallery overlay */}
+      {galleryOpen && (
+        <MediaGallery
+          messages={data.messages}
+          mediaFileMap={mediaFileMap}
+          onClose={() => setGalleryOpen(false)}
+          onPostClick={(msg) => {
+            setGalleryOpen(false)
+            setSelectedPost(msg)
+          }}
+        />
+      )}
+
+      {/* Calendar overlay */}
+      {calendarOpen && (
+        <CalendarView
+          messages={data.messages}
+          initialYear={calendarOpen.year}
+          initialMonth={calendarOpen.month}
+          onClose={() => setCalendarOpen(null)}
+          onPostClick={setSelectedPost}
+        />
       )}
 
       {/* Post detail */}
