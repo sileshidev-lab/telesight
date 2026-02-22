@@ -1,5 +1,5 @@
-// Hugging Face Inference API integration
-const HF_API_URL = "https://api-inference.huggingface.co/models/meta-llama/Llama-2-7b-chat-hf"
+// Hugging Face API via local proxy (fixes CORS)
+const API_URL = "/api/chat"
 
 export interface HFMessage {
   role: "system" | "user" | "assistant"
@@ -22,43 +22,30 @@ export class HFAPIError extends Error {
 }
 
 /**
- * Send chat message to Hugging Face Inference API
+ * Send chat message via local API proxy
  */
 export async function sendHFMessage(
   token: string,
   messages: HFMessage[],
   maxTokens = 512
 ): Promise<string> {
-  // Format messages for Llama 2 chat format
-  const prompt = formatLlama2Chat(messages)
-
-  const response = await fetch(HF_API_URL, {
+  const response = await fetch(API_URL, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      inputs: prompt,
-      parameters: {
-        max_new_tokens: maxTokens,
-        temperature: 0.7,
-        top_p: 0.9,
-        do_sample: true,
-        return_full_text: false,
-      },
-      options: {
-        wait_for_model: true,
-        use_cache: false,
-      },
+      token,
+      messages,
+      maxTokens,
     }),
   })
 
   if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ error: "Unknown error" }))
     const isRateLimit = response.status === 429
-    const errorText = await response.text().catch(() => "Unknown error")
     throw new HFAPIError(
-      `API Error: ${response.status} - ${errorText}`,
+      errorData.error || `API Error: ${response.status}`,
       response.status,
       isRateLimit
     )
@@ -66,52 +53,11 @@ export async function sendHFMessage(
 
   const result = await response.json()
   
-  // Handle different response formats
-  if (Array.isArray(result) && result[0]?.generated_text) {
-    return result[0].generated_text.trim()
-  }
-  
   if (result.generated_text) {
     return result.generated_text.trim()
   }
 
   throw new HFAPIError("Unexpected response format from API")
-}
-
-/**
- * Format messages for Llama 2 chat format
- * Llama 2 uses: <s>[INST] <<SYS>>\n{system}\n<</SYS>>\n\n{user} [/INST] {assistant} </s>
- */
-function formatLlama2Chat(messages: HFMessage[]): string {
-  const systemMessage = messages.find(m => m.role === "system")
-  const chatMessages = messages.filter(m => m.role !== "system")
-  
-  let prompt = "<s>"
-  
-  // Add system message if present
-  if (systemMessage) {
-    prompt += `[INST] <<SYS>>\n${systemMessage.content}\n<</SYS>>\n\n`
-  } else {
-    prompt += `[INST] `
-  }
-  
-  // Add conversation
-  for (let i = 0; i < chatMessages.length; i++) {
-    const msg = chatMessages[i]
-    
-    if (msg.role === "user") {
-      if (i > 0) {
-        // Continue conversation after first response
-        prompt += `<s>[INST] ${msg.content} [/INST]`
-      } else {
-        prompt += `${msg.content} [/INST]`
-      }
-    } else if (msg.role === "assistant") {
-      prompt += ` ${msg.content} </s>`
-    }
-  }
-  
-  return prompt
 }
 
 /**
@@ -203,19 +149,19 @@ function buildConversationSummary(
 }
 
 /**
- * Check if model is available/warm
+ * Check if model is available via local proxy
  */
 export async function checkModelStatus(token: string): Promise<boolean> {
   try {
-    const response = await fetch(HF_API_URL, {
+    const response = await fetch(API_URL, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        inputs: "<s>[INST] Hi [/INST]",
-        parameters: { max_new_tokens: 5 },
+        token,
+        messages: [{ role: "user", content: "Hi" }],
+        maxTokens: 5,
       }),
     })
     
