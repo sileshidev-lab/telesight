@@ -1,22 +1,25 @@
 import { NextRequest, NextResponse } from "next/server"
 
-// Hugging Face Inference API endpoint for sentiment analysis
-const HF_INFERENCE_API = "https://api-inference.huggingface.co/models"
+// Hugging Face Inference Providers endpoint (for gpt-oss models)
+const HF_INFERENCE_API = "https://router.huggingface.co/v1/chat/completions"
 
-// Recommended models for sentiment analysis
-const SENTIMENT_MODELS = {
-  // Use simple text classification model
-  sentiment: "distilbert-base-uncased-finetuned-sst-2-english",
-  // Emotion detection
-  emotion: "j-hartmann/emotion-english-distilroberta-base",
-  // Toxicity detection
-  toxicity: "unitary/toxic-bert",
-}
+// Scoring rules for sentiment analysis
+const SENTIMENT_SCORING_RULES = `You are a sentiment analysis expert. Analyze the message and rate it based on these rules:
+
+SCORING CRITERIA:
+- Score 0.0-0.3 (NEGATIVE): Contains anger, frustration, hate, annoyance, complaints, negative words, multiple exclamation marks, ALL CAPS shouting
+- Score 0.4-0.6 (NEUTRAL): Normal conversation, questions, factual statements, mixed emotions, general chat
+- Score 0.7-1.0 (POSITIVE): Contains happiness, excitement, gratitude, compliments, positive words, good emojis
+
+RESPONSE FORMAT:
+Return ONLY JSON: {"sentiment": "positive|negative|neutral", "score": 0.XX, "reason": "brief"}
+
+Analyze this:`
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { messages, token, type = "sentiment" } = body
+    const { messages, token } = body
 
     if (!token) {
       return NextResponse.json(
@@ -32,109 +35,61 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const model = SENTIMENT_MODELS[type as keyof typeof SENTIMENT_MODELS] || SENTIMENT_MODELS.sentiment
-
-    // Process messages in batches to avoid rate limits
+    // Process messages using prompt-based analysis
     const results = await Promise.all(
       messages.map(async (msg: { text: string; id: string }) => {
         try {
-          const response = await fetch(`${HF_INFERENCE_API}/${model}`, {
+          const prompt = `${SENTIMENT_SCORING_RULES}\n"${msg.text}"`
+
+          const response = await fetch(HF_INFERENCE_API, {
             method: "POST",
             headers: {
               "Authorization": `Bearer ${token}`,
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({ inputs: msg.text }),
+            body: JSON.stringify({
+              model: "openai/gpt-oss-120b:cerebras",
+              messages: [
+                { role: "system", content: "Return only valid JSON." },
+                { role: "user", content: prompt }
+              ],
+              max_tokens: 60,
+              temperature: 0.1,
+            }),
           })
 
           if (!response.ok) {
-            // If model is loading, return a default response
-            if (response.status === 503) {
-              return {
-                id: msg.id,
-                text: msg.text,
-                sentiment: "neutral",
-                score: 0.5,
-                loading: true,
-              }
+            if (response.status === 402 || response.status === 503) {
+              return await fallbackAnalysis(msg)
             }
-
-            if (response.status === 401) {
-              return {
-                id: msg.id,
-                text: msg.text,
-                sentiment: "neutral",
-                score: 0.5,
-                error: "Invalid token. Please check your Hugging Face access token.",
-              }
-            }
-
-            if (response.status === 403) {
-              return {
-                id: msg.id,
-                text: msg.text,
-                sentiment: "neutral",
-                score: 0.5,
-                error: "Token doesn't have access to this model. Please check your token permissions.",
-              }
-            }
-
-            if (response.status === 410) {
-              return {
-                id: msg.id,
-                text: msg.text,
-                sentiment: "neutral",
-                score: 0.5,
-                error: "Model is deprecated or unavailable. Please check the Hugging Face model hub for alternatives.",
-              }
-            }
-
-            throw new Error(`HF API error: ${response.status}`)
+            return { id: msg.id, text: msg.text, sentiment: "neutral", score: 0.5, error: `API: ${response.status}` }
           }
 
           const data = await response.json()
-          
-          // Parse different model outputs
-          let sentiment = "neutral"
-          let score = 0.5
+          const content = data.choices?.[0]?.message?.content || ""
 
-          if (Array.isArray(data) && data.length > 0) {
-            // Standard classification output
-            const predictions = data[0]
-            if (Array.isArray(predictions)) {
-              // Multi-class output
-              const topPrediction = predictions.reduce((a, b) => 
-                a.score > b.score ? a : b
-              )
-              sentiment = topPrediction.label.toLowerCase()
-              score = topPrediction.score
-            } else {
-              // Single output
-              sentiment = predictions.label?.toLowerCase() || "neutral"
-              score = predictions.score || 0.5
-            }
+          // Parse JSON from response
+          let result
+          try {
+            const jsonMatch = content.match(/\{[^}]+\}/)
+            result = jsonMatch ? JSON.parse(jsonMatch[0]) : analyzeLocally(msg.text)
+          } catch {
+            result = analyzeLocally(msg.text)
           }
 
           return {
             id: msg.id,
             text: msg.text,
-            sentiment,
-            score,
+            sentiment: result.sentiment || "neutral",
+            score: Math.max(0, Math.min(1, result.score || 0.5)),
+            reason: result.reason || "",
           }
         } catch (error) {
-          console.error(`Error analyzing message ${msg.id}:`, error)
-          return {
-            id: msg.id,
-            text: msg.text,
-            sentiment: "neutral",
-            score: 0.5,
-            error: true,
-          }
+          return { id: msg.id, text: msg.text, sentiment: "neutral", score: 0.5, error: true }
         }
       })
     )
 
-    // Calculate aggregated statistics
     const stats = {
       total: results.length,
       positive: results.filter(r => r.sentiment === "positive" || r.score > 0.6).length,
@@ -145,72 +100,67 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ results, stats })
   } catch (error) {
-    console.error("Sentiment analysis error:", error)
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Analysis failed" },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Failed" }, { status: 500 })
   }
 }
 
-// Health check endpoint to verify model availability
+// Local keyword-based analysis as fallback
+function analyzeLocally(text: string) {
+  const lower = text.toLowerCase()
+  const negativeWords = ["hate", "annoying", "terrible", "awful", "frustrating", "bad", "worst", "angry", "mad", "ridiculous", "stupid", "suck"]
+  const positiveWords = ["love", "amazing", "great", "awesome", "thanks", "happy", "excited", "good", "fantastic", "perfect"]
+  
+  const negCount = negativeWords.filter(w => lower.includes(w)).length
+  const posCount = positiveWords.filter(w => lower.includes(w)).length
+  const hasPosEmoji = /[🚀💪❤️😊😍🎉👍✨🔥]/u.test(text)
+  const hasNegEmoji = /[😠😤😡💔😢😭😒]/u.test(text)
+  const shouting = /[A-Z]{3,}/.test(text)
+  const exclaims = /!{2,}/.test(text)
+  
+  let score = 0.5, sentiment = "neutral", reason = ""
+  
+  if (negCount > 0 || hasNegEmoji || (shouting && exclaims)) {
+    score = Math.max(0, 0.5 - (negCount * 0.15) - (hasNegEmoji ? 0.2 : 0) - (shouting ? 0.1 : 0))
+    sentiment = "negative"
+    reason = `${negCount} negative indicators${hasNegEmoji ? " + emoji" : ""}`
+  } else if (posCount > 0 || hasPosEmoji) {
+    score = Math.min(1, 0.5 + (posCount * 0.15) + (hasPosEmoji ? 0.2 : 0))
+    sentiment = "positive"
+    reason = `${posCount} positive indicators${hasPosEmoji ? " + emoji" : ""}`
+  } else {
+    reason = "Neutral tone"
+  }
+  
+  return { sentiment, score, reason }
+}
+
+async function fallbackAnalysis(msg: { text: string; id: string }) {
+  const result = analyzeLocally(msg.text)
+  return { id: msg.id, text: msg.text, ...result, fallback: true }
+}
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const token = searchParams.get("token")
-  const modelType = searchParams.get("model") || "sentiment"
 
-  if (!token) {
-    return NextResponse.json(
-      { error: "Token required" },
-      { status: 401 }
-    )
-  }
-
-  const model = SENTIMENT_MODELS[modelType as keyof typeof SENTIMENT_MODELS] || SENTIMENT_MODELS.sentiment
+  if (!token) return NextResponse.json({ error: "Token required" }, { status: 401 })
 
   try {
-    // Test the model with a simple request
-    const response = await fetch(`${HF_INFERENCE_API}/${model}`, {
+    const response = await fetch(HF_INFERENCE_API, {
       method: "POST",
-      headers: {
-        "Authorization": `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ inputs: "This is a test." }),
+      headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "openai/gpt-oss-120b:cerebras",
+        messages: [{ role: "user", content: "Test" }],
+        max_tokens: 10,
+      }),
     })
 
-    if (response.status === 503) {
-      return NextResponse.json({
-        status: "loading",
-        message: "Model is currently loading, please try again in a few seconds",
-      })
-    }
-
-    // Handle 410 Gone - model deprecated/unavailable
-    if (response.status === 410) {
-      return NextResponse.json({
-        status: "ready",
-        message: "Token is valid (model endpoint deprecated but token works)",
-        model,
-      })
-    }
-
-    if (response.ok) {
-      return NextResponse.json({
-        status: "ready",
-        message: "Model is available",
-        model,
-      })
-    }
-
-    return NextResponse.json(
-      { status: "error", message: `API error: ${response.status}` },
-      { status: response.status }
-    )
+    if (response.status === 503) return NextResponse.json({ status: "loading" })
+    if (response.status === 402) return NextResponse.json({ status: "ready", message: "Pro required. Local fallback available." })
+    if (response.ok) return NextResponse.json({ status: "ready", message: "API ready with scoring rules" })
+    return NextResponse.json({ status: "error", message: `API: ${response.status}` }, { status: response.status })
   } catch (error) {
-    return NextResponse.json(
-      { status: "error", message: error instanceof Error ? error.message : "Unknown error" },
-      { status: 500 }
-    )
+    return NextResponse.json({ status: "error", message: String(error) }, { status: 500 })
   }
 }
