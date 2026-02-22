@@ -1,5 +1,8 @@
 import type { TelegramMessage } from "./telegram-types"
 import { getMessageText } from "./telegram-types"
+import Sentiment from "sentiment"
+
+const sentiment = new Sentiment()
 
 // Conflict/conflict patterns - aggressive language indicators
 const CONFLICT_WORDS = [
@@ -93,8 +96,15 @@ function analyzeMessage(message: TelegramMessage): ConflictResult | null {
     if (conflictMatches.length > 0) reasons.push("Short negative response")
   }
 
-  // Calculate sentiment (simple approximation)
-  const sentiment = -score / 2
+  // Use sentiment library for base sentiment score
+  const sentimentResult = sentiment.analyze(text)
+  const sentimentScore = sentimentResult.score
+  
+  // Add sentiment-based scoring (more negative = higher conflict score)
+  if (sentimentScore < -2) {
+    score += Math.abs(sentimentScore)
+    reasons.push(`Negative sentiment (${sentimentScore})`)
+  }
 
   // Determine intensity
   let intensity: "low" | "medium" | "high" = "low"
@@ -108,7 +118,7 @@ function analyzeMessage(message: TelegramMessage): ConflictResult | null {
     message,
     score,
     reasons,
-    sentiment,
+    sentiment: sentimentScore,
     intensity
   }
 }
