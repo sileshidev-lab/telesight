@@ -14,6 +14,7 @@ import {
   ChevronUp,
   Filter,
   AlertTriangle,
+  Key,
 } from "lucide-react"
 import type { TelegramMessage } from "@/lib/telegram-types"
 import { getMessageText } from "@/lib/telegram-types"
@@ -21,6 +22,8 @@ import type { MediaFileMap } from "@/hooks/use-media-url"
 import { useMediaUrl } from "@/hooks/use-media-url"
 import { findConflicts, getConflictStats } from "@/lib/conflict-detector"
 import { findManipulation, getManipulationStats, getManipulationTypeDescription, getSeverityColor, type ManipulationType } from "@/lib/manipulation-detector"
+import { useHuggingFaceToken } from "@/hooks/use-hf-token"
+import { HFTokenDialog } from "./hf-token-dialog"
 
 interface SentimentViewProps {
   messages: TelegramMessage[]
@@ -130,6 +133,14 @@ export function SentimentView({
   const [minSeverity, setMinSeverity] = useState<"mild" | "moderate" | "severe">("mild")
   const [selectedTypes, setSelectedTypes] = useState<ManipulationType[]>([])
   const [showFilters, setShowFilters] = useState(false)
+  const [tokenDialogOpen, setTokenDialogOpen] = useState(false)
+  const [hfAnalysis, setHfAnalysis] = useState<{
+    loading: boolean
+    results: { id: string; text: string; sentiment: string; score: number }[] | null
+    error: string | null
+  }>({ loading: false, results: null, error: null })
+
+  const { token, hasToken } = useHuggingFaceToken()
 
   // Get data from both detectors
   const conflictStats = useMemo(() => getConflictStats(messages), [messages])
@@ -155,8 +166,59 @@ export function SentimentView({
 
   const totalIssues = conflicts.length + manipulations.length
 
+  // Run Hugging Face sentiment analysis
+  const runHFAnalysis = async () => {
+    if (!hasToken) {
+      setTokenDialogOpen(true)
+      return
+    }
+
+    setHfAnalysis({ loading: true, results: null, error: null })
+
+    try {
+      const messageData = messages
+        .filter(m => m.type === "message")
+        .slice(-100) // Last 100 messages
+        .map(m => ({
+          id: m.id.toString(),
+          text: getMessageText(m),
+        }))
+
+      const response = await fetch("/api/sentiment/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: messageData,
+          token,
+          type: "sentiment",
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Analysis failed")
+      }
+
+      setHfAnalysis({ loading: false, results: data.results, error: null })
+    } catch (err) {
+      setHfAnalysis({
+        loading: false,
+        results: null,
+        error: err instanceof Error ? err.message : "Analysis failed",
+      })
+    }
+  }
+
   return (
     <div className="fixed inset-0 z-[60] bg-background overflow-y-auto">
+      {/* Token Dialog */}
+      <HFTokenDialog
+        isOpen={tokenDialogOpen}
+        onClose={() => setTokenDialogOpen(false)}
+        onSave={(token) => {}}
+        hasExistingToken={hasToken}
+      />
       {/* Header */}
       <div className="sticky top-0 z-10 border-b border-border bg-background/95 backdrop-blur-sm">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
@@ -173,13 +235,39 @@ export function SentimentView({
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-            aria-label="Close"
-          >
-            <X className="h-5 w-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={runHFAnalysis}
+              disabled={hfAnalysis.loading}
+              className="flex items-center gap-1.5 rounded-lg bg-purple-500/10 border border-purple-500/20 px-3 py-1.5 text-xs font-medium text-purple-500 transition-all hover:bg-purple-500/20 disabled:opacity-50"
+            >
+              {hfAnalysis.loading ? (
+                <>
+                  <div className="h-3 w-3 animate-spin rounded-full border-2 border-purple-500 border-t-transparent" />
+                  Analyzing...
+                </>
+              ) : (
+                <>
+                  <Key className="h-3.5 w-3.5" />
+                  {hasToken ? "HF Analysis" : "Add HF Token"}
+                </>
+              )}
+            </button>
+            <button
+              onClick={() => setTokenDialogOpen(true)}
+              className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+              title="Manage token"
+            >
+              <Key className="h-4 w-4" />
+            </button>
+            <button
+              onClick={onClose}
+              className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+              aria-label="Close"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
         </div>
 
         {/* Tabs */}

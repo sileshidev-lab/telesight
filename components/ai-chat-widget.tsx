@@ -1,10 +1,11 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { MessageSquare, X, Send, Loader2, Bot, User, AlertCircle } from "lucide-react"
+import { MessageSquare, X, Send, Loader2, Bot, User, AlertCircle, Key } from "lucide-react"
 import type { TelegramMessage } from "@/lib/telegram-types"
 import { getMessageText } from "@/lib/telegram-types"
-import { sendAIMessage, buildChatContext, AIError, loadPuterScript, isPuterReady } from "@/lib/puter-api"
+import { useHuggingFaceToken } from "@/hooks/use-hf-token"
+import { HFTokenDialog } from "./hf-token-dialog"
 
 interface AIChatWidgetProps {
   messages: TelegramMessage[]
@@ -25,30 +26,17 @@ export function AIChatWidget({ messages }: AIChatWidgetProps) {
     {
       id: "welcome",
       role: "assistant",
-      content: "Hi! I can help you analyze this conversation. Ask me things like:\n• \"Find when I mentioned WhatsApp\"\n• \"Summarize the main topics\"\n• \"Who sent the most messages?\"\n• \"Find any arguments or conflicts\"",
+      content: "Hi! I can help you analyze this conversation using Hugging Face AI. Ask me things like:\n• \"Find when I mentioned WhatsApp\"\n• \"Summarize the main topics\"\n• \"Who sent the most messages?\"\n• \"Find any arguments or conflicts\"",
       timestamp: new Date(),
     },
   ])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [isPuterLoaded, setIsPuterLoaded] = useState(false)
+  const [tokenDialogOpen, setTokenDialogOpen] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // Load Puter.js on mount
-  useEffect(() => {
-    if (isPuterReady()) {
-      setIsPuterLoaded(true)
-      return
-    }
-    
-    loadPuterScript()
-      .then(() => setIsPuterLoaded(true))
-      .catch((err) => {
-        console.error("Puter load error:", err)
-        setError("Failed to load AI service. Please check your internet connection and refresh.")
-      })
-  }, [])
+  const { token, hasToken, setToken } = useHuggingFaceToken()
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -65,8 +53,8 @@ export function AIChatWidget({ messages }: AIChatWidgetProps) {
   const handleSend = async () => {
     if (!input.trim() || isLoading) return
 
-    if (!isPuterLoaded) {
-      setError("AI service is still loading. Please wait a moment and try again.")
+    if (!hasToken) {
+      setTokenDialogOpen(true)
       return
     }
 
@@ -92,35 +80,41 @@ export function AIChatWidget({ messages }: AIChatWidgetProps) {
 
     try {
       // Build context from messages
-      const messageData = messages
+      const messageTexts = messages
         .filter(m => m.type === "message")
-        .map(m => ({
-          from: m.from,
-          text: getMessageText(m),
-          date: m.date,
-        }))
+        .slice(-50) // Last 50 messages for context
+        .map(m => `${m.from}: ${getMessageText(m)}`)
 
-      const context = buildChatContext(messageData, userMessage.content)
-      
-      const response = await sendAIMessage(context)
+      // Call backend API
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: messageTexts,
+          question: userMessage.content,
+          token,
+          model: "flan",
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to get response")
+      }
 
       // Replace loading message with actual response
       setChatMessages(prev => 
         prev.filter(m => m.id !== "loading").concat({
           id: Date.now().toString(),
           role: "assistant",
-          content: response,
+          content: data.response || "I couldn't process that request.",
           timestamp: new Date(),
         })
       )
     } catch (err) {
       setChatMessages(prev => prev.filter(m => m.id !== "loading"))
-      
-      if (err instanceof AIError) {
-        setError(err.message)
-      } else {
-        setError("Failed to get response. Please try again.")
-      }
+      setError(err instanceof Error ? err.message : "Failed to get response. Please try again.")
     } finally {
       setIsLoading(false)
     }
@@ -135,6 +129,14 @@ export function AIChatWidget({ messages }: AIChatWidgetProps) {
 
   return (
     <>
+      {/* Token Dialog */}
+      <HFTokenDialog
+        isOpen={tokenDialogOpen}
+        onClose={() => setTokenDialogOpen(false)}
+        onSave={setToken}
+        hasExistingToken={hasToken}
+      />
+
       {/* Floating toggle button */}
       {!isOpen && (
         <button
@@ -158,17 +160,26 @@ export function AIChatWidget({ messages }: AIChatWidgetProps) {
               <div>
                 <h3 className="text-sm font-semibold text-foreground">AI Assistant</h3>
                 <p className="text-[10px] text-muted-foreground">
-                  {isPuterLoaded ? "Ready to help" : "Loading..."}
+                  {hasToken ? "Powered by Hugging Face" : "Token required"}
                 </p>
               </div>
             </div>
-            <button
-              onClick={() => setIsOpen(false)}
-              className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-              aria-label="Close"
-            >
-              <X className="h-4 w-4" />
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setTokenDialogOpen(true)}
+                className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                title={hasToken ? "Update token" : "Add token"}
+              >
+                <Key className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setIsOpen(false)}
+                className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
           </div>
 
           {/* Messages */}
@@ -220,12 +231,18 @@ export function AIChatWidget({ messages }: AIChatWidgetProps) {
             </div>
           )}
 
-          {/* Not loaded warning */}
-          {!isPuterLoaded && !error && (
+          {/* No token warning */}
+          {!hasToken && !error && (
             <div className="mx-4 mb-2 rounded-lg bg-amber-500/10 border border-amber-500/20 px-3 py-2">
               <p className="text-xs text-amber-700 flex items-center gap-2">
-                <Loader2 className="h-3 w-3 animate-spin" />
-                Loading AI service...
+                <Key className="h-3 w-3" />
+                <span>Hugging Face token required. </span>
+                <button
+                  onClick={() => setTokenDialogOpen(true)}
+                  className="font-medium underline hover:no-underline"
+                >
+                  Add token
+                </button>
               </p>
             </div>
           )}
@@ -239,13 +256,13 @@ export function AIChatWidget({ messages }: AIChatWidgetProps) {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder={isPuterLoaded ? "Ask about the conversation..." : "Loading..."}
-                disabled={!isPuterLoaded || isLoading}
+                placeholder={hasToken ? "Ask about the conversation..." : "Add token to use chat..."}
+                disabled={!hasToken || isLoading}
                 className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground outline-none placeholder:text-muted-foreground focus:border-primary disabled:opacity-50"
               />
               <button
                 onClick={handleSend}
-                disabled={!isPuterLoaded || !input.trim() || isLoading}
+                disabled={!hasToken || !input.trim() || isLoading}
                 className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground transition-all hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
                 aria-label="Send"
               >
@@ -253,7 +270,7 @@ export function AIChatWidget({ messages }: AIChatWidgetProps) {
               </button>
             </div>
             <p className="mt-1.5 text-[10px] text-muted-foreground text-center">
-              Powered by Puter AI • Free • No API key needed
+              Powered by Hugging Face • <button onClick={() => setTokenDialogOpen(true)} className="underline hover:no-underline">{hasToken ? "Token saved" : "Add token"}</button>
             </p>
           </div>
         </div>
