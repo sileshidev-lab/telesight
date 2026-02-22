@@ -81,6 +81,15 @@ export async function POST(req: NextRequest) {
           )
         }
 
+        // Handle 410 - model deprecated/unavailable
+        if (response.status === 410) {
+          return NextResponse.json({
+            response: "The AI model is currently unavailable. The model may have been deprecated. Please try a different model or check the Hugging Face model hub.",
+            error: "Model deprecated (410)",
+            fallback: true,
+          })
+        }
+
         throw new Error(`HF API error: ${response.status}`)
       }
 
@@ -158,6 +167,15 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({
         status: "loading",
         message: "Model is currently loading, please try again in a few seconds",
+        model,
+      })
+    }
+
+    // Handle 410 - model deprecated
+    if (response.status === 410) {
+      return NextResponse.json({
+        status: "ready",
+        message: "Token is valid (model may be deprecated)",
         model,
       })
     }
