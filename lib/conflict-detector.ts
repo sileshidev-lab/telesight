@@ -236,13 +236,20 @@ export function getConflictStats(messages: TelegramMessage[]) {
   }
 
   // Top contributors to conflicts (for group chats)
-  const contributorMap = new Map<string, number>()
+  const contributorMap = new Map<string, { count: number; score: number }>()
   for (const c of conflicts) {
     const from = c.message.from || "Unknown"
-    contributorMap.set(from, (contributorMap.get(from) || 0) + c.score)
+    const existing = contributorMap.get(from)
+    if (existing) {
+      existing.count += 1
+      existing.score += c.score
+    } else {
+      contributorMap.set(from, { count: 1, score: c.score })
+    }
   }
   const topContributors = Array.from(contributorMap.entries())
-    .sort((a, b) => b[1] - a[1])
+    .map(([name, data]) => ({ name, count: data.count, score: data.score }))
+    .sort((a, b) => b.score - a.score)
     .slice(0, 5)
 
   return {
