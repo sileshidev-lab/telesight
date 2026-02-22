@@ -1,6 +1,6 @@
 "use client"
 
-import { Search, X, ArrowDownNarrowWide, ArrowUpNarrowWide } from "lucide-react"
+import { Search, X, ArrowDownNarrowWide, ArrowUpNarrowWide, ImageIcon, Link2 } from "lucide-react"
 import type { SortDirection } from "@/lib/telegram-types"
 
 export type FilterType =
@@ -11,6 +11,11 @@ export type FilterType =
   | "replies"
   | "service"
 
+export interface DisplayToggles {
+  showMedia: boolean
+  showLinkPreviews: boolean
+}
+
 interface FilterToolbarProps {
   searchQuery: string
   onSearchChange: (query: string) => void
@@ -19,6 +24,8 @@ interface FilterToolbarProps {
   resultCount: number
   sortDirection: SortDirection
   onSortChange: (direction: SortDirection) => void
+  displayToggles: DisplayToggles
+  onDisplayToggleChange: (toggles: DisplayToggles) => void
 }
 
 const filters: { value: FilterType; label: string }[] = [
@@ -38,6 +45,8 @@ export function FilterToolbar({
   resultCount,
   sortDirection,
   onSortChange,
+  displayToggles,
+  onDisplayToggleChange,
 }: FilterToolbarProps) {
   return (
     <div className="sticky top-[105px] z-20 border-b border-border bg-background/80 backdrop-blur-sm md:top-[117px]">
@@ -79,6 +88,44 @@ export function FilterToolbar({
                 </button>
               ))}
             </div>
+
+            <div className="h-5 w-px bg-border/50 mx-1" />
+
+            <button
+              onClick={() =>
+                onDisplayToggleChange({
+                  ...displayToggles,
+                  showMedia: !displayToggles.showMedia,
+                })
+              }
+              className={`flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-all ${
+                displayToggles.showMedia
+                  ? "bg-primary/15 text-primary"
+                  : "bg-secondary/50 text-muted-foreground/50 hover:text-muted-foreground"
+              }`}
+              aria-label={displayToggles.showMedia ? "Hide media" : "Show media"}
+              title={displayToggles.showMedia ? "Media visible" : "Media hidden"}
+            >
+              <ImageIcon className="h-3.5 w-3.5" />
+            </button>
+
+            <button
+              onClick={() =>
+                onDisplayToggleChange({
+                  ...displayToggles,
+                  showLinkPreviews: !displayToggles.showLinkPreviews,
+                })
+              }
+              className={`flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-all ${
+                displayToggles.showLinkPreviews
+                  ? "bg-primary/15 text-primary"
+                  : "bg-secondary/50 text-muted-foreground/50 hover:text-muted-foreground"
+              }`}
+              aria-label={displayToggles.showLinkPreviews ? "Hide link previews" : "Show link previews"}
+              title={displayToggles.showLinkPreviews ? "Links visible" : "Links hidden"}
+            >
+              <Link2 className="h-3.5 w-3.5" />
+            </button>
 
             <div className="h-5 w-px bg-border/50 mx-1" />
 

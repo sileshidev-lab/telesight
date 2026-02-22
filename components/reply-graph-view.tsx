@@ -503,6 +503,11 @@ export function ReplyGraphView({ messages, onClose, onPostClick }: ReplyGraphVie
                   onPostClick?.(selectedNode.message)
                 }
               }}
+              onMemberPostClick={(node) => {
+                if (!node.isForwardedReply) {
+                  onPostClick?.(node.message)
+                }
+              }}
             />
           ) : (
             <ChainListPanel
@@ -510,6 +515,11 @@ export function ReplyGraphView({ messages, onClose, onPostClick }: ReplyGraphVie
               selectedChain={selectedChain}
               onChainSelect={(id) => setSelectedChain(selectedChain === id ? null : id)}
               onNodeSelect={setSelectedNode}
+              onPostClick={(node) => {
+                if (!node.isForwardedReply) {
+                  onPostClick?.(node.message)
+                }
+              }}
             />
           )}
         </aside>
@@ -524,11 +534,13 @@ function SelectedNodePanel({
   graphData,
   onClose,
   onViewPost,
+  onMemberPostClick,
 }: {
   node: GraphNode
   graphData: ReplyGraphData
   onClose: () => void
   onViewPost: () => void
+  onMemberPostClick: (node: GraphNode) => void
 }) {
   // Find the chain this node belongs to
   const chain = graphData.chains.find((c) => c.id === node.chainId)
@@ -588,9 +600,10 @@ function SelectedNodePanel({
               {chain.nodes
                 .sort((a, b) => a.date.getTime() - b.date.getTime())
                 .map((n) => (
-                  <div
+                  <button
                     key={n.id}
-                    className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs transition-colors ${
+                    onClick={() => onMemberPostClick(n)}
+                    className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs transition-colors w-full text-left cursor-pointer ${
                       n.id === node.id
                         ? "bg-primary/10 border border-primary/20"
                         : "bg-secondary/30 hover:bg-secondary/50"
@@ -601,7 +614,7 @@ function SelectedNodePanel({
                     {n.reactionCount > 0 && (
                       <span className="text-muted-foreground/60 font-mono shrink-0">{n.reactionCount}</span>
                     )}
-                  </div>
+                  </button>
                 ))}
             </div>
           </div>
@@ -638,11 +651,13 @@ function ChainListPanel({
   selectedChain,
   onChainSelect,
   onNodeSelect,
+  onPostClick,
 }: {
   graphData: ReplyGraphData
   selectedChain: number | null
   onChainSelect: (id: number) => void
   onNodeSelect: (node: GraphNode) => void
+  onPostClick: (node: GraphNode) => void
 }) {
   return (
     <div className="flex flex-col h-full">
@@ -724,17 +739,31 @@ function ChainListPanel({
                     .sort((a, b) => a.date.getTime() - b.date.getTime())
                     .slice(0, 8)
                     .map((n) => (
-                      <button
+                      <div
                         key={n.id}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onNodeSelect(n)
-                        }}
-                        className="flex items-center gap-2 w-full rounded-md bg-secondary/30 px-2 py-1 text-[10px] text-left hover:bg-secondary/50 transition-colors"
+                        className="flex items-center gap-1 w-full rounded-md bg-secondary/30 text-[10px] text-left hover:bg-secondary/50 transition-colors"
                       >
-                        <span className="font-mono text-muted-foreground shrink-0">#{n.id}</span>
-                        <span className="truncate text-foreground/80">{n.text.slice(0, 40) || "[media]"}</span>
-                      </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onPostClick(n)
+                          }}
+                          className="flex items-center gap-2 flex-1 min-w-0 px-2 py-1 cursor-pointer"
+                        >
+                          <span className="font-mono text-muted-foreground shrink-0">#{n.id}</span>
+                          <span className="truncate text-foreground/80">{n.text.slice(0, 40) || "[media]"}</span>
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onNodeSelect(n)
+                          }}
+                          className="px-1.5 py-1 text-muted-foreground/50 hover:text-primary shrink-0 cursor-pointer"
+                          title="Show in graph"
+                        >
+                          <Share2 className="h-2.5 w-2.5" />
+                        </button>
+                      </div>
                     ))}
                   {chain.nodes.length > 8 && (
                     <p className="text-[10px] text-muted-foreground/60 pl-2">

@@ -14,11 +14,13 @@ interface MasonryGridProps {
   mediaFileMap?: MediaFileMap | null
   onMonthClick?: (year: number, month: number) => void
   onPostClick?: (message: TelegramMessage) => void
+  showMedia?: boolean
+  showLinkPreviews?: boolean
 }
 
 const BATCH_SIZE = 40
 
-export function MasonryGrid({ monthGroups, messageMap, onHashtagClick, mediaFileMap, onMonthClick, onPostClick }: MasonryGridProps) {
+export function MasonryGrid({ monthGroups, messageMap, onHashtagClick, mediaFileMap, onMonthClick, onPostClick, showMedia = true, showLinkPreviews = true }: MasonryGridProps) {
   const isMobile = useIsMobile()
   const [visibleCount, setVisibleCount] = useState(BATCH_SIZE)
   const sentinelRef = useRef<HTMLDivElement>(null)
@@ -178,6 +180,8 @@ export function MasonryGrid({ monthGroups, messageMap, onHashtagClick, mediaFile
                     onHashtagClick={onHashtagClick}
                     mediaFileMap={mediaFileMap}
                     onPostClick={onPostClick}
+                    showMedia={showMedia}
+                    showLinkPreviews={showLinkPreviews}
                   />
                 </div>
               )

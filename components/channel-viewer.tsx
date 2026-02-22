@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useCallback } from "react"
 import { ChannelHeader } from "./channel-header"
-import { FilterToolbar, type FilterType } from "./filter-toolbar"
+import { FilterToolbar, type FilterType, type DisplayToggles } from "./filter-toolbar"
 import { MasonryGrid } from "./masonry-grid"
 import { HashtagHeader } from "./hashtag-header"
 import type { TelegramExport, TelegramMessage, SortDirection } from "@/lib/telegram-types"
@@ -37,6 +37,10 @@ export function ChannelViewer({ data, onReset, mediaFileMap, folderName, onMedia
   const [selectedPost, setSelectedPost] = useState<TelegramMessage | null>(null)
   const [statsOpen, setStatsOpen] = useState(false)
   const [graphOpen, setGraphOpen] = useState(false)
+  const [displayToggles, setDisplayToggles] = useState<DisplayToggles>({
+    showMedia: true,
+    showLinkPreviews: true,
+  })
 
   const stats = useMemo(() => computeStats(data), [data])
 
@@ -157,6 +161,8 @@ export function ChannelViewer({ data, onReset, mediaFileMap, folderName, onMedia
         resultCount={filteredMessages.length}
         sortDirection={sortDirection}
         onSortChange={setSortDirection}
+        displayToggles={displayToggles}
+        onDisplayToggleChange={setDisplayToggles}
       />
       {activeHashtag && (
         <HashtagHeader
@@ -172,6 +178,8 @@ export function ChannelViewer({ data, onReset, mediaFileMap, folderName, onMedia
         mediaFileMap={mediaFileMap}
         onMonthClick={openCalendar}
         onPostClick={openPost}
+        showMedia={displayToggles.showMedia}
+        showLinkPreviews={displayToggles.showLinkPreviews}
       />
 
       {/* Stats overlay */}

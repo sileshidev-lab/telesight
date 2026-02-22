@@ -12,11 +12,14 @@ interface MessageCardProps {
   onHashtagClick?: (hashtag: string) => void
   mediaFileMap?: MediaFileMap | null
   onPostClick?: (message: TelegramMessage) => void
+  showMedia?: boolean
+  showLinkPreviews?: boolean
 }
 
 function renderTextParts(
   parts: MessageText[],
-  onHashtagClick?: (hashtag: string) => void
+  onHashtagClick?: (hashtag: string) => void,
+  showLinkPreviews: boolean = true,
 ): React.ReactNode[] {
   return parts.map((part, i) => {
     if (typeof part === "string") {
@@ -25,6 +28,9 @@ function renderTextParts(
 
     switch (part.type) {
       case "link":
+        if (!showLinkPreviews) {
+          return <span key={i} className="text-muted-foreground break-all">{part.text}</span>
+        }
         return (
           <a
             key={i}
@@ -113,6 +119,9 @@ function renderTextParts(
       case "custom_emoji":
         return <span key={i}>{part.text}</span>
       case "text_link":
+        if (!showLinkPreviews) {
+          return <span key={i} className="text-muted-foreground">{part.text}</span>
+        }
         return (
           <a
             key={i}
@@ -148,6 +157,8 @@ export function MessageCard({
   onHashtagClick,
   mediaFileMap,
   onPostClick,
+  showMedia = true,
+  showLinkPreviews = true,
 }: MessageCardProps) {
   const text = getPlainText(message)
   const hasMedia = !!(message.photo || message.media_type || message.file)
@@ -216,7 +227,7 @@ export function MessageCard({
       )}
 
       {/* Media */}
-      {hasMedia && (
+      {hasMedia && showMedia && (
         <>
           {resolvedMediaUrl ? (
             <div className="rounded-lg overflow-hidden bg-secondary/30 -mx-1" onClick={(e) => e.stopPropagation()}>
@@ -318,7 +329,7 @@ export function MessageCard({
           {typeof message.text === "string" ? (
             <span>{message.text}</span>
           ) : Array.isArray(message.text) ? (
-            renderTextParts(message.text as MessageText[], onHashtagClick)
+            renderTextParts(message.text as MessageText[], onHashtagClick, showLinkPreviews)
           ) : null}
         </div>
       )}
