@@ -138,6 +138,14 @@ function computeWrappedData(messages: TelegramMessage[]): WrappedData {
     }
   }
 
+  // Sender detection (needed before bestHour/bestDay)
+  const senders = new Set<string>()
+  for (const m of posts) {
+    if (m.from) senders.add(m.from)
+  }
+  const isGroup = senders.size > 2
+  const isDM = senders.size === 2
+
   // Best hour/day
   const hourly = hourBuckets.map((b, i) => ({
     hour: i, label: hourLabel(i),
@@ -178,13 +186,7 @@ function computeWrappedData(messages: TelegramMessage[]): WrappedData {
   }
   maxStreak = Math.max(maxStreak, currentStreak)
 
-  // Group detection
-  const senders = new Set<string>()
-  for (const m of posts) {
-    if (m.from) senders.add(m.from)
-  }
-  const isGroup = senders.size > 2
-  const isDM = senders.size === 2
+  // DM / Group specific data
   const dmParticipants = getDMParticipants(messages)
   let dmSplit: WrappedData["dmSplit"] = null
 
