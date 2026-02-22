@@ -2,7 +2,7 @@
 
 A beautiful, interactive visualization tool for Telegram channel, group, and DM exports. Analyze your conversations with AI-powered insights, analytics, and media galleries — all running client-side in your browser.
 
-![Telesight Screenshot](https://via.placeholder.com/800x400?text=Telesight+Preview)
+![Telesight Screenshot](./public/telesight-preview.jpg)
 
 ## Features
 
