@@ -1,8 +1,5 @@
 import type { TelegramMessage } from "./telegram-types"
 import { getMessageText } from "./telegram-types"
-import Sentiment from "sentiment"
-
-const sentiment = new Sentiment()
 
 // Manipulation pattern categories with professional terminology
 export type ManipulationType = 
@@ -250,15 +247,6 @@ function analyzeMessageForManipulation(message: TelegramMessage): ManipulationRe
     totalScore += typeScore
   }
 
-  // Get sentiment score for additional context
-  const sentimentResult = sentiment.analyze(text)
-  const sentimentScore = sentimentResult.score
-
-  // Boost score if very negative sentiment combined with manipulation patterns
-  if (detectedTypes.length > 0 && sentimentScore < -2) {
-    totalScore += Math.abs(sentimentScore) * 0.5
-  }
-
   // Determine severity level
   let severity: "mild" | "moderate" | "severe" = "mild"
   if (totalScore >= 6) severity = "severe"
@@ -273,7 +261,7 @@ function analyzeMessageForManipulation(message: TelegramMessage): ManipulationRe
     severity,
     types: detectedTypes,
     reasons: reasons.slice(0, 3), // Limit to top 3 reasons
-    sentimentScore,
+    sentimentScore: 0,
   }
 }
 
